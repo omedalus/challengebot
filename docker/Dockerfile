@@ -24,3 +24,22 @@ RUN  apt-get update \
 # Install Puppeteer under /node_modules so it's available system-wide
 ADD package.json /
 RUN npm install
+
+# A lot of the below is taken from
+# https://docker-curriculum.com/
+
+# set a directory for the app
+WORKDIR /usr/src/app
+
+# copy all the files to the container
+COPY . .
+
+# The puppeteer instances will run headless by default.
+# The local jumbotron will need to be viewable by a local browser.
+# The challengebot bout executor runs a webserver presenting
+# the jumbotron on port 3210.
+EXPOSE 3210
+
+CD challengebot
+CMD ["node", "local-web-ui.js"]
+
