@@ -1,22 +1,21 @@
-const fs = require('fs');
 
-const PlayerPuppeteerSandbox = require('./model/player-puppeteer-sandbox.js');
-
-const main = async () => {
-  const p1 = new PlayerPuppeteerSandbox();
-  await p1.init();
-};
-
-/*
-const main = async () => {
-  const browserGameMaster = await puppeteer.launch({
-    headless: false
+const createArena = async (arenaJS) => {
+  const browserArena = await puppeteer.launch({
+    headless: true
   });
-  const pageGameMaster = await browserGameMaster.newPage();
-  pageGameMaster.setViewport({
-    width: 1024,
-    height: 1400
-  });
+  const pageArena = await browserGameMaster.newPage();
+
+  const playerObj = {
+    puppeteerBrowser: browserPlayer,
+    puppeteerPage: pagePlayer,
+    script: '',
+    actionPromiseResolve: null,
+    actionParams: null,
+    sensorReadings: null,
+    taunt: null
+  };
+
+
   return;
 
   const setupPlayer = async (playernum) => {
@@ -139,7 +138,7 @@ const main = async () => {
   await pageGameMaster.evaluate(`(async () => { ${jsGameMaster} })()`);
 }
 
-*/
+
 
 main()
 

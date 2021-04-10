@@ -1,13 +1,6 @@
+const puppeteer = require('puppeteer');
 const fs = require('fs');
 
-const PlayerPuppeteerSandbox = require('./model/player-puppeteer-sandbox.js');
-
-const main = async () => {
-  const p1 = new PlayerPuppeteerSandbox();
-  await p1.init();
-};
-
-/*
 const main = async () => {
   const browserGameMaster = await puppeteer.launch({
     headless: false
@@ -139,7 +132,7 @@ const main = async () => {
   await pageGameMaster.evaluate(`(async () => { ${jsGameMaster} })()`);
 }
 
-*/
+
 
 main()
 
