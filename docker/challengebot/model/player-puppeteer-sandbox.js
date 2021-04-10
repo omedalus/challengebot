@@ -66,6 +66,7 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
       const p = new Promise((resolve, reject) => {
         if (this.actionPromiseResolve !== null) {
           reject('Previous action is still in progress.');
+          return;
         }
         this.actionParams = actionParams;
         this.actionPromiseResolve = resolve;
