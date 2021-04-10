@@ -35,9 +35,9 @@ WORKDIR /usr/src/app
 COPY . .
 
 # The puppeteer instances will run headless by default.
-# The local jumbotron will need to be viewable by a local browser.
+# The local spectator view will need to be viewable by a local browser.
 # The challengebot bout executor runs a webserver presenting
-# the jumbotron on port 3210.
+# the spectator view on port 3210.
 EXPOSE 3210
 
 CD challengebot
