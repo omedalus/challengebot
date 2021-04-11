@@ -111,4 +111,11 @@ const main = async () => {
   }
 };
 
-main();
+
+(async () => {
+  await main();
+  // Ensure that we exit, even if there are still timeouts lingering.
+  process.exit();  
+})();
+
+

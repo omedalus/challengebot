@@ -34,5 +34,5 @@ while (true) {
 }
 
 console.log('And now I spin forever.');
-//await sleep(50000);
-while(true) {}
+await sleep(500);
+//while(true) {}

@@ -71,17 +71,13 @@ class PuppeteerSandbox {
     // We would use Promise.any, but apparently that doesn't exist yet.
     // https://forums.meteor.com/t/promise-any-is-not-a-function/54603
     let didForceShutdown = false;
-    const whicheverPromiseFiresFirst = new Promise((resolve, reject) => {
-      this.runPromise.then(() => {
-        resolve();
-        // TODO: Find a way to make the timeout abort.
-      });
+    const whicheverPromiseResolvesFirst = [
+      this.runPromise,
       this.page.waitForTimeout(ms).then(() => {
         didForceShutdown = true;
-        resolve();
-      });
-    });
-    await whicheverPromiseFiresFirst;
+      })      
+    ];
+    await Promise.race(whicheverPromiseResolvesFirst);
     await this.shutdown();
     
     if (didForceShutdown) {
