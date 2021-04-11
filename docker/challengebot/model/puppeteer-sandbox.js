@@ -10,7 +10,21 @@ class PuppeteerSandbox {
   // The script to execute within the page context.
   script = '';
   
-  __initialized = false;
+  // A saved-state object that allows this sandbox to store data
+  // between instantiations.
+  myLongTermMemory = '';
+  
+  // An error that was encountered during the run. Cleared when
+  // a run is invoked. Set at some point during the run if an
+  // uncaught error causes the run to abort.
+  error = null;
+  
+  // A promise that's set when the script begins running. It gets
+  // resolved (void) when the run completes (even if the run itself failed).
+  runPromise = null;
+  
+  // Internal tracker that prevents sandbox from being double-initialized.
+  __initialized = false;  
   
   // Launches the puppeteer instance. This must be called before
   // any functions are injected and before the run method is invoked.
@@ -31,9 +45,49 @@ class PuppeteerSandbox {
     
     // Give the poor schmucks a sleep function.
     await this.injectFunction('sleep', async (ms) => {
-      await this.page.waitForTimeout(Math.ceil(Math.abs(ms)) || 1);
+      ms = Math.ceil(Math.max(1, ms));
+      await this.page.waitForTimeout(ms);
     });
   }
+  
+  // Gracefun shutdown.
+  async shutdown() {
+    if (this.browser) {
+      await this.browser.close();
+      this.browser = null;
+      this.page = null;
+    }
+  }
+  
+  // Abort execution and close the browser if more tha the given number
+  // of milliseconds go by.
+  async ensureTimedShutdown(ms) {
+    if (!this.runPromise) {
+      // In theory this means we're already down.
+      await this.shutdown();
+      return;
+    }
+    
+    // We would use Promise.any, but apparently that doesn't exist yet.
+    // https://forums.meteor.com/t/promise-any-is-not-a-function/54603
+    let didForceShutdown = false;
+    const whicheverPromiseFiresFirst = new Promise((resolve, reject) => {
+      this.runPromise.then(() => {
+        resolve();
+        // TODO: Find a way to make the timeout abort.
+      });
+      this.page.waitForTimeout(ms).then(() => {
+        didForceShutdown = true;
+        resolve();
+      });
+    });
+    await whicheverPromiseFiresFirst;
+    await this.shutdown();
+    
+    if (didForceShutdown) {
+      this.error = new Error(`Puppeteer sandbox forced timeout after ${ms} ms.`);
+    }
+  }  
   
   // Injects a function of the given name into the puppeteer instance.
   // Must be run after the init method. Should be run before the run
@@ -46,18 +100,46 @@ class PuppeteerSandbox {
   // Runs the given JavaScript (or the object's "script" contents)
   // in the puppeteer instance. You will typically call this without
   // awaiting the results. Must be run after the init method.
-  // Should be run after all functions are injected (doesn't have to 
+  // Must be run after all functions are injected (doesn't have to 
   // be, but it's usually a good idea).
-  async run(script) {
+  async run(script, shouldShutdownAfterFinish = true) {
+    let fnResolve = null;
+    this.runPromise = new Promise((resolve, reject) => {
+      // TODO: Find a way to return the actual promise of this function.
+      fnResolve = resolve;
+    });
+    
     if (typeof script === 'undefined') {
       script = this.script;
     }
-    this.script = script;
-    if (!this.script) {
-      throw new TypeError('Cannot run a sandbox without a script!');
-    }
+    this.script = script || '';
 
-    await this.page.evaluate(`(async () => { ${script} })()`);
+    this.error = null;
+    
+    try {
+      // Inject long-term memory.
+      await this.page.evaluate(
+          `ChallengeBot.myLongTermMemory = ${JSON.stringify(this.myLongTermMemory)};`
+      );
+      
+      // Run the script!
+      await this.page.evaluate(`(async () => { ${script} })()`);
+      
+      // Retrieve long-term memory when finished.
+      this.myLongTermMemory = await this.page.evaluate(
+          `ChallengeBot.myLongTermMemory || ''`
+      );
+      
+    } catch (err) {
+      this.error = err;
+      
+    } finally {
+      if (shouldShutdownAfterFinish) {
+        await this.shutdown();
+      }
+      this.runPromise = null;
+      fnResolve();
+    }
   }
 }
 
