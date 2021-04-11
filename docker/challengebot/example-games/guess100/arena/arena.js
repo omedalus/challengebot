@@ -13,12 +13,12 @@ const goal = Math.ceil(Math.random() * 100);
 console.log(`I'm thinking of a number. It's ${goal}.`);
 
 while (true) {
-  const playerGuess = await ChallengeBot.getPlayerAction(1);
+  const playerGuess = await ChallengeBot.requirePlayerAction(playerNum, 5000);
   console.log(`Player has guessed ${JSON.stringify(playerGuess)}`);
   
   const isGuessCorrect = (playerGuess === goal);
   
-  await ChallengeBot.notifyPlayerActionCompleted(1, isGuessCorrect);
+  await ChallengeBot.notifyPlayerActionCompleted(playerNum, isGuessCorrect);
   
   if (isGuessCorrect) {
     console.log('Victory!');
@@ -26,5 +26,4 @@ while (true) {
   }
   
   console.log('Trying again.');
-  await ChallengeBot.sleep(1000);
 }

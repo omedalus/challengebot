@@ -30,6 +30,11 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // notifyPlayerActionCompleted.
   actionPromiseResolve = null;
   
+  // If the arena requires an action to be set, then it will set this 
+  // promise resolver on the player. This is so that the arena's
+  // requirePlayerAction method works.
+  actionRequiredResolve = null;
+  
   // The last action set by the player.
   // This corresponds to what was set by the player when they 
   // called action({...}), and it's what's returned to the arena
@@ -42,7 +47,11 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // Can be dependent on the last action performed by the player;
   // for example, if the game is Star Trek and the player performed
   // a "scan" action, then this variable would contain the results
-  // of the scan (possibly among other things).
+  // of the scan (possibly among other things). This information can
+  // also be conveyed via action results that the arena passes to
+  // the player when the arena calls notifyPlayerActionCompleted,
+  // but some games will prefer it one way and others will prefer it
+  // the other.
   sensorReadings = null;
   
   // A short message set by the player via taunt(), and readable by
@@ -75,9 +84,24 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
         }
         this.actionParams = actionParams;
         this.actionPromiseResolve = resolve;
+        
+        if (this.actionRequiredResolve) {
+          this.actionRequiredResolve(actionParams);
+          this.actionRequiredResolve = null;
+        }
       });
       return p;
     });
+  }
+  
+  // Resolves and clears the current action promise, if there is one.
+  // Resets the current action if it had been set.
+  resolveAction(actionResults) {
+    if (this.actionPromiseResolve) {
+      this.actionPromiseResolve(actionResults);
+    }
+    this.actionPromiseResolve = null;
+    this.actionParams = null;
   }
 }
 

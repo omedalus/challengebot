@@ -28,6 +28,11 @@ class PuppeteerSandbox {
     // Inject a global ChallengeBot object that will be used
     // as a namespace for aliases for exposed methods.
     await this.page.evaluate(`const ChallengeBot = {};`);
+    
+    // Give the poor schmucks a sleep function.
+    await this.injectFunction('sleep', async (ms) => {
+      await this.page.waitForTimeout(Math.ceil(Math.abs(ms)) || 1);
+    });
   }
   
   // Injects a function of the given name into the puppeteer instance.

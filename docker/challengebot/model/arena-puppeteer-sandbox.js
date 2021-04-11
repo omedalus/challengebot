@@ -84,6 +84,31 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
       const player = this.getPlayer(playernum);
       return player.actionParams;
     });
+    
+    // Retrieves the action that the player had set with a call to action(), if
+    // there is one. If not, then blocks until either the player sets an action
+    // or the timeout expires.
+    await this.injectFunction('requirePlayerAction', (playernum, maxWaitMs) => {
+      const p = new Promise((resolve, reject) => {
+        const player = this.getPlayer(playernum);
+        if (player.actionParams) {
+          player.actionRequiredResolve = null;
+          resolve(player.actionParams);
+          return;
+        }
+        player.actionRequiredResolve = resolve;
+        this.page.waitForTimeout(Math.ceil(Math.abs(maxWaitMs)) || 1).finally(() => {
+          if (player.actionRequiredResolve) {
+            // The resolve has never been called, so we've been left waiting.
+            // No resolution is coming. Reject it.
+            reject(`Player ${playernum} timed out after ${maxWaitMs} ms.`);
+            return;
+          }
+        });
+      });
+      return p;
+    });
+
 
     // Retrieves the taunt that the player had set with a call to taunt().
     await this.injectFunction('getPlayerTaunt', (playernum) => {
@@ -109,19 +134,14 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
     });
     
     // Resolve the player's promise that was created when they issued their last action.
+    // Clears the player's last action, as well as the promise resolver.
+    // Note that this modifies the player object!
     await this.injectFunction('notifyPlayerActionCompleted', (playernum, actionResults) => {
       const player = this.getPlayer(playernum);
-      if (player && player.actionPromiseResolve) {
-        const fnResolve = player.actionPromiseResolve;
-        player.actionPromiseResolve = null;
-        fnResolve(actionResults);
+      if (player) {
+        player.resolveAction(actionResults);
       }
     });
-
-    await this.injectFunction('sleep', async (ms) => {
-      await this.page.waitForTimeout(ms);
-    });
-
     
   }
 }
