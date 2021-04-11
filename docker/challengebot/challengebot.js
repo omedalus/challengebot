@@ -1,10 +1,53 @@
 const fs = require('fs');
 
+const ArenaPuppeteerSandbox = require('./model/arena-puppeteer-sandbox.js');
 const PlayerPuppeteerSandbox = require('./model/player-puppeteer-sandbox.js');
 
+const EXAMPLE_GAME_PATH = './example-games/guess100';
+
 const main = async () => {
-  const p1 = new PlayerPuppeteerSandbox();
-  await p1.init();
+  const playerSandboxes = [];
+  
+  const arenaSandbox = new ArenaPuppeteerSandbox();
+  await arenaSandbox.init();
+  
+  arenaSandbox.script = fs.readFileSync(
+      `${EXAMPLE_GAME_PATH}/arena/arena.js`, 
+      {encoding: 'utf-8'});
+
+  arenaSandbox.createPlayer = async () => {
+    const playerSandbox = new PlayerPuppeteerSandbox();
+    playerSandboxes.push(playerSandbox);
+    playerSandbox.playernum = playerSandboxes.length;
+    
+    playerSandbox.script = fs.readFileSync(
+        `${EXAMPLE_GAME_PATH}/players/player__${playerSandbox.playernum}.js`, 
+        {encoding: 'utf-8'});    
+    
+    await playerSandbox.init();
+    return playerSandbox;
+  };
+  
+  arenaSandbox.getPlayer = (playernum) => playerSandboxes[playernum - 1];
+  
+  arenaSandbox.runAllPlayers = async () => {
+    // Even though we are in an async function just to be safe,
+    // we do NOT await the players! They are all launching into
+    // potentially infinite loops!
+    // Therefore, we can use the forEach method.
+    playerSandboxes.forEach((psbx) => {
+      psbx.run();
+    });
+  };
+  
+  arenaSandbox.updateSpectator = async (spectatorParams) => {
+    console.log('We dont have a spectator yet, but if we did he would hear:');
+    console.log(spectatorParams);
+  };
+  
+  // We  await this because we want to be able to have the option
+  // of cleaning up nicely later.
+  await arenaSandbox.run();
 };
 
 /*

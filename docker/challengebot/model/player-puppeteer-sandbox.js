@@ -1,5 +1,10 @@
 const PuppeteerSandbox = require('./puppeteer-sandbox.js');
 
+// TODO: Have a way to load a long-term memory object for this player.
+// Have the player be notified when the game is over. He'll update
+// his long-term memory object and the framework will store it for 
+// next time.
+
 class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // The global ID of the player, presumably identifying their script.
   id = '0';

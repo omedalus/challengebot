@@ -48,6 +48,9 @@ class PuppeteerSandbox {
       script = this.script;
     }
     this.script = script;
+    if (!this.script) {
+      throw new TypeError('Cannot run a sandbox without a script!');
+    }
 
     await this.page.evaluate(`(async () => { ${script} })()`);
   }
