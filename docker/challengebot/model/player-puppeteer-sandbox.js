@@ -57,6 +57,7 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // A short message set by the player via taunt(), and readable by
   // the arena via getPlayerTaunt(). Its only purpose is for funny
   // or insightfun UI updates.
+  // TODO: Replace this with a callback that notifies the spectator directly.
   tauntMsg = null;
   
   
@@ -76,7 +77,8 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
     
     await this.injectFunction('action', (actionParams) => {
       // TODO: Ensure that the structure is proper and that the player
-      // isn't trying to do something evil.
+      // isn't trying to do something evil, like take down the puppeteer
+      // session with an enormous object that eats all memory.
       const p = new Promise((resolve, reject) => {
         if (this.actionPromiseResolve !== null) {
           reject('Previous action is still in progress.');

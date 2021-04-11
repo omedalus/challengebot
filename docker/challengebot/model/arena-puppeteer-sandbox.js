@@ -1,35 +1,14 @@
 
 const PuppeteerSandbox = require('./puppeteer-sandbox.js');
+const PlayerAccessor = require('./player-accessor.js');
 
 // TODO: Have a way to end the game and report results.
 
 class ArenaPuppeteerSandbox extends PuppeteerSandbox {
 
-  // Method set by the caller to provide the arena with a hook to
-  // call when instantiating new players. 
-  // Returns a new player object. The player object must have playernum set.
-  createPlayer = async () => {
-    throw new Error('Caller must set the arena\'s createPlayer method.');
-  };
-  
-  // Method set by the caller to retrieve a player by numerical index.
-  // Together with createPlayer, this means that the arena sandbox doesn't
-  // need to keep track of a player sandbox collection. Therefore, the ownership
-  // of player objects is unambiguous: the calling framework owns the
-  // canonical collection of player sandbox objects, just like it owns this
-  // arena sandbox object.
-  // Returns a player object previously created by createPlayer.
-  getPlayer = (playernum) => {
-    throw new Error('Caller must set the arena\'s createPlayer method.');
-  };
-  
-  // Method set by the caller to invoke the run method of all of the player
-  // sandboxes. This way, they all spin up at the same time, thus avoiding 
-  // any extra runtime that an earlier-loaded player might have gotten while
-  // a later-loaded player's file was retrieved.
-  runAllPlayers = async () => {
-    throw new Error('Caller must set the arena\'s runAllPlayers method.');
-  };
+  // An object set by the caller that permits the arena sandbox to interact
+  // with the calling framework, which owns the collection of player objects.
+  playerAccessor = null;
   
   // Method set by the caller to pass information along to the spectator(s).
   updateSpectator = async (spectatorParams) => {
@@ -42,23 +21,35 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
   // Tells us if the game has started yet.
   isGameStarted = false;
 
+  // Safeguard function that makes sure we get a meaningful error message
+  // if we forgot to set the player accessor.
+  ensurePlayerAccessor() {
+    if (!this.playerAccessor) {
+      // TODO: Make this an ArenaError type.
+      throw new Error('The arena does not have a player accessor.');
+    }    
+  }
+
   async init() {
     await super.init();
     
     // Requests for a player to join the game.
     // Can only be invoked once at a time.
     await this.injectFunction('requestPlayer', () => {
+      this.ensurePlayerAccessor();
       const p = new Promise((resolve, reject) => {
         if (this.isPlayerBeingCreated) {
+          // TODO: Make this an ArenaError.
           reject('The previous player creation request is still in progress.');
           return;
         }
         this.isPlayerBeingCreated = true;
         
-        this.createPlayer().then((player) => {
+        this.playerAccessor.createPlayer().then((player) => {
           resolve(player.playernum);
         }).
         catch((err) => {
+          // TODO: Make this an ArenaError.
           reject(err)
         }).
         finally(() => {
@@ -80,46 +71,58 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
     });
     
     // Retrieves the action that the player had set with a call to action().
+    // This method is nondestructive and non-blocking. It retrieves whatever
+    // action the player had last set, and doesn't clear it.
     await this.injectFunction('getPlayerAction', (playernum) => {
       const player = this.getPlayer(playernum);
       return player.actionParams;
+    });
+    
+    // A convenience method that simultaneously collects all player actions.
+    // It returns a map, keyed by player numbers, to the action results.
+    await this.injectFunction('getAllPlayersActions', () => {
+      this.ensurePlayerAccessor();
+      const allPlayerActions = {};
+      this.playerAccessor.getPlayerCollection().forEach((p) => {
+        allPlayerActions[p.playernum] = p.actionParams;
+      });
+      return allPlayerActions;
     });
     
     // Retrieves the action that the player had set with a call to action(), if
     // there is one. If not, then blocks until either the player sets an action
     // or the timeout expires.
     await this.injectFunction('requirePlayerAction', (playernum, maxWaitMs) => {
+      const player = this.getPlayer(playernum);
+      return this.requirePlayerAction(player, maxWaitMs);
+    });
+    
+    // Convenience method that simultaneously waits for all players to provide
+    // an action, and times out players who don't. Returns a map of result objects.
+    // Each result object will have either an 'action' field or an 'error' field,
+    // respectively.
+    await this.injectFunction('requireAllPlayersActions', (maxWaitMs) => {
+      let numPromisesWaiting = this.playerAccessor.getPlayerCollection().length;
+      const allPlayerActions = {};
       const p = new Promise((resolve, reject) => {
-        const player = this.getPlayer(playernum);
-        if (player.actionParams) {
-          player.actionRequiredResolve = null;
-          resolve(player.actionParams);
-          return;
-        }
-        
-        let hasBeenResolved = false;
-        player.actionRequiredResolve = (actionParams) => {
-          hasBeenResolved = true;
-          resolve(actionParams);
-        };;
-        this.page.waitForTimeout(Math.ceil(Math.abs(maxWaitMs)) || 1).finally(() => {
-          if (!hasBeenResolved) {
-            // The resolve has never been called, so we've been left waiting.
-            // No resolution is coming. Reject it.
-            reject(`Player ${playernum} timed out after ${maxWaitMs} ms.`);
-            return;
-          }
+        this.playerAccessor.getPlayerCollection().forEach((player) => {
+          this.requirePlayerAction(player, maxWaitMs).
+              then((actionParams) => {
+                allPlayerActions[player.playernum] = {action: player.actionParams};
+              }).
+              catch((err) => {
+                allPlayerActions[player.playernum] = {error: player.actionParams};
+              }).
+              finally(() => {
+                numPromisesWaiting--;
+                if (numPromisesWaiting <= 0) {
+                  resolve(allPlayerActions);
+                }
+              });
         });
       });
       return p;
-    });
-
-
-    // Retrieves the taunt that the player had set with a call to taunt().
-    await this.injectFunction('getPlayerTaunt', (playernum) => {
-      const player = this.getPlayer(playernum);
-      return player.actionParams;
-    });
+    });    
     
     // Sets the sensor readings that the player will retrieve with a call to sensors().
     await this.injectFunction('setPlayerSensors', (playernum, sensorReadings) => {
@@ -143,12 +146,66 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
     // Note that this modifies the player object!
     await this.injectFunction('notifyPlayerActionCompleted', (playernum, actionResults) => {
       const player = this.getPlayer(playernum);
-      if (player) {
-        player.resolveAction(actionResults);
-      }
+      player.resolveAction(actionResults);
     });
-    
   }
+
+  // Get the player with the playernum playernum from the player accessor's
+  // collection. This method is guaranteed to return a player object, or throw.
+  getPlayer(playernum) {
+    try {
+      this.ensurePlayerAccessor();
+      const player = this.
+          playerAccessor.
+          getPlayerCollection().
+          find((p) => p.playernum === playernum);
+      if (!player) {
+        // TODO: Make this an ArenaError.
+        throw new Error(`No such player with number: ${playernum}`);
+      }
+      return player;    
+    } catch(err) {
+      // TODO: Wrap in an ArenaError.
+      throw err;
+    }
+  }
+
+  // Call the run method on all player sandboxes. This is NOT an asynchronous
+  // function! It does not block while they run; they can all run in parallel.
+  runAllPlayers() {
+    this.ensurePlayerAccessor();
+    this.playerAccessor.getPlayerCollection().forEach((p) => {
+      // Launch the script in the sandbox. Again, this is all happening
+      // in parallel; the script can run forever for all we care.
+      p.run();
+    });
+  }
+  
+  
+  // Retrieves the action that the player had set with a call to action(), if
+  // there is one. If not, then blocks until either the player sets an action
+  // or the timeout expires.
+  requirePlayerAction(player, maxWaitMs) {
+    maxWaitMs = Math.ceil(Math.max(1, maxWaitMs));      
+    
+    player.actionRequiredResolve = null;
+    if (player.actionParams) {
+      return Promise.resolve(player.actionParams);
+    }
+    const p = new Promise((resolve, reject) => {
+      player.actionRequiredResolve = resolve;
+      this.page.waitForTimeout(Math.ceil(Math.abs(maxWaitMs)) || 1).finally(() => {
+        // If the timeout has passed and resolve has no been called, then 
+        // the player has never called their action() method in the allotted time,
+        // and they must be rejected. Note that if resolve HAS been called, then
+        // the promise is already fulfilled and therefore this call to reject
+        // will do nothing, so it's safe.
+        // TODO: Make this an ArenaError, possibly a PlayerTimeoutError.
+        reject(`Player ${player.playernum} timed out after ${maxWaitMs} ms.`);
+      });
+    });
+    return p;
+  }  
 }
 
 module.exports = ArenaPuppeteerSandbox;
