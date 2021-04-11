@@ -96,9 +96,14 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
           resolve(player.actionParams);
           return;
         }
-        player.actionRequiredResolve = resolve;
+        
+        let hasBeenResolved = false;
+        player.actionRequiredResolve = (actionParams) => {
+          hasBeenResolved = true;
+          resolve(actionParams);
+        };;
         this.page.waitForTimeout(Math.ceil(Math.abs(maxWaitMs)) || 1).finally(() => {
-          if (player.actionRequiredResolve) {
+          if (!hasBeenResolved) {
             // The resolve has never been called, so we've been left waiting.
             // No resolution is coming. Reject it.
             reject(`Player ${playernum} timed out after ${maxWaitMs} ms.`);
