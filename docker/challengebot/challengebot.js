@@ -72,12 +72,22 @@ const main = async () => {
   // Handle endgame
   
   console.log('Arena has completed. Waiting for players to complete.');
-  // We can do this serially, because they're all already running.
-  // They should be already waiting on us to check on them.
+  const playerShutdownPromises = [];
   for (let psbx of playerSandboxes) {
-    await psbx.ensureTimedShutdown(10 * 1000);
-    console.log(`  [X] Player ${psbx.playernum}: ${psbx.id}`);
+    // Notify them that the game is over, and give them each 60 seconds
+    // to shut down.
+    if (psbx.gameOverPromiseResolve) {
+      psbx.gameOverPromiseResolve();
+      psbx.gameOverPromiseResolve = null;
+    }
+    const playerShutdownPromise = psbx.
+        ensureTimedShutdown(60 * 1000).
+        then(() => {
+          console.log(`  [X] Player ${psbx.playernum}: ${psbx.id}`);
+        });
+    playerShutdownPromises.push(playerShutdownPromise);
   }
+  await Promise.allSettled(playerShutdownPromises);
   
   if (arenaSandbox.error) {
     console.log('Arena encountered an error. None of the results count.');
@@ -93,12 +103,14 @@ const main = async () => {
       await psbx.runPromise;
       
       if (psbx.error) {
-        console.log('  Died in disgrace. Gains no loot and learns nothing. Error:');
+        console.log('  Died in disgrace. Gains no prizes and learns nothing. Error:');
         console.log(psbx.error);
         return;
       }
-      console.log(`  Received loot:`);
-      // TODO: List loot here.
+      console.log(`  Received prizes:`);
+      psbx.prizes.forEach((prize) => {
+        console.log(`    - ${prize}`);
+      });
 
       console.log('  And what did we learn from this?');
       console.log(psbx.myLongTermMemory);

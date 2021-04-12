@@ -30,6 +30,7 @@ while (true) {
   
   if (isGuessCorrect) {
     console.log('Victory!');
+    ChallengeBot.awardPlayerPrize(playerNum, "Winner", numGuessesPermitted, 100, `Won with ${numGuessesPermitted} guesses remaining.`);
     break;
   }
   

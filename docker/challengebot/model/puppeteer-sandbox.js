@@ -19,7 +19,7 @@ class PuppeteerSandbox {
   // uncaught error causes the run to abort.
   error = null;
   
-  // A promise that's set when the script begins running. It gets
+  // A promise that's created when the script begins running. It gets
   // resolved (void) when the run completes (even if the run itself failed).
   runPromise = null;
   
@@ -74,15 +74,11 @@ class PuppeteerSandbox {
     const whicheverPromiseResolvesFirst = [
       this.runPromise,
       this.page.waitForTimeout(ms).then(() => {
-        didForceShutdown = true;
+        this.error = new Error(`Puppeteer sandbox forced timeout after ${ms} ms.`);
       })      
     ];
     await Promise.race(whicheverPromiseResolvesFirst);
     await this.shutdown();
-    
-    if (didForceShutdown) {
-      this.error = new Error(`Puppeteer sandbox forced timeout after ${ms} ms.`);
-    }
   }  
   
   // Injects a function of the given name into the puppeteer instance.

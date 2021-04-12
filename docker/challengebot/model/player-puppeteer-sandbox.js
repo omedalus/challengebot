@@ -1,4 +1,5 @@
 const PuppeteerSandbox = require('./puppeteer-sandbox.js');
+const Prize = require('./prize.js');
 
 // TODO: Have a way to load a long-term memory object for this player.
 // Have the player be notified when the game is over. He'll update
@@ -35,6 +36,14 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // requirePlayerAction method works.
   actionRequiredResolve = null;
   
+  // A promise that resolves when the arena notifies us that the game
+  // has finished.
+  gameOverPromise = null;
+  
+  // The resolve method of the gameOverPromise, called by the framework
+  // when our game ends.
+  gameOverPromiseResolve = null;
+  
   // The last action set by the player.
   // This corresponds to what was set by the player when they 
   // called action({...}), and it's what's returned to the arena
@@ -60,6 +69,8 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // TODO: Replace this with a callback that notifies the spectator directly.
   tauntMsg = null;
   
+  // List of prizes awarded to the player at the end of the game.
+  prizes = [];
   
   async init() {
     await super.init();
@@ -88,12 +99,31 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
         this.actionPromiseResolve = resolve;
         
         if (this.actionRequiredResolve) {
+          // Someone was waiting on us to make an action.
+          // Notify them that they can stop waiting.
           this.actionRequiredResolve(actionParams);
           this.actionRequiredResolve = null;
         }
       });
       return p;
     });
+    
+    this.gameOverPromise = new Promise((resolve, reject) => {
+      this.gameOverPromiseResolve = resolve;
+    });
+    
+    // Gives the player a promise that resolves when the game ends.
+    // The framework calls this method to notify the player that the
+    // arena has finished. The player can use this time to examine
+    // its prizes and update its long-term memory.
+    await this.injectFunction('gameOver', () => {
+      return this.gameOverPromise;
+    });
+    
+    // Lets the player access the prizes that the 
+    await this.injectFunction('prizes', () => {
+      return this.prizes;
+    });    
   }
   
   // Resolves and clears the current action promise, if there is one.

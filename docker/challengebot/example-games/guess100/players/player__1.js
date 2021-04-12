@@ -33,6 +33,11 @@ while (true) {
   }
 }
 
-console.log('And now I spin forever.');
-await sleep(500);
-//while(true) {}
+
+await ChallengeBot.gameOver();
+
+console.log('Look at what I won!');
+console.log(await ChallengeBot.prizes());
+
+console.log('And now I spin.');
+await ChallengeBot.sleep(10000);

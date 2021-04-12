@@ -1,8 +1,7 @@
 
 const PuppeteerSandbox = require('./puppeteer-sandbox.js');
 const PlayerAccessor = require('./player-accessor.js');
-
-// TODO: Have a way to end the game and report results.
+const Prize = require('./prize.js');
 
 class ArenaPuppeteerSandbox extends PuppeteerSandbox {
 
@@ -148,6 +147,14 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
       const player = this.getPlayer(playernum);
       player.resolveAction(actionResults);
     });
+    
+    // Adds a prize to the player's collection of prizes won in this game.
+    await this.injectFunction('awardPlayerPrize', (playernum, prizeLabel, prizeArg1, prizeArg2, prizeArg3) => {
+      const prize = new Prize(prizeLabel, prizeArg1, prizeArg2, prizeArg3);      
+      const player = this.getPlayer(playernum);
+      player.prizes.push(prize);
+    });
+    
   }
 
   // Get the player with the playernum playernum from the player accessor's
