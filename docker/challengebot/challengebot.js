@@ -4,9 +4,14 @@ const ArenaPuppeteerSandbox = require('./model/arena-puppeteer-sandbox.js');
 const PlayerPuppeteerSandbox = require('./model/player-puppeteer-sandbox.js');
 const PlayerAccessor = require('./model/player-accessor.js');
 
+const WebServerSpectator = require('./local-web-ui/web-server-spectator.js');
+
 const EXAMPLE_GAME_PATH = './example-games/guess100';
 
 const main = async () => {
+  const spectator = new WebServerSpectator();
+  await spectator.init();
+  
   const playerSandboxes = [];
   
   const playerAccessor = new PlayerAccessor();
@@ -44,7 +49,7 @@ const main = async () => {
     
     // TODO: Connect the player sandbox to the spectator.
     playerSandbox.onTaunt = async (tauntMsg) => {
-      console.log(`Taunt from Player ${playerSandbox.playernum}: ${tauntMsg}`);
+      await spectator.receiveTaunt(playerSandbox.playernum, tauntMsg);
     };
     
     return playerSandbox;
@@ -62,8 +67,7 @@ const main = async () => {
       {encoding: 'utf-8'});
   
   arenaSandbox.updateSpectator = async (spectatorParams) => {
-    console.log('We dont have a spectator yet, but if we did he would hear:');
-    console.log(spectatorParams);
+    await spectator.receiveUpdate(spectatorParams);
   };
 
   // --------------------
@@ -125,6 +129,8 @@ const main = async () => {
     };
     console.log('\n\n');  
   }
+  
+  await spectator.shutdown();
 };
 
 
