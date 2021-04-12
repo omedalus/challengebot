@@ -43,6 +43,10 @@ const main = async () => {
     }    
     
     // TODO: Connect the player sandbox to the spectator.
+    playerSandbox.onTaunt = async (tauntMsg) => {
+      console.log(`Taunt from Player ${playerSandbox.playernum}: ${tauntMsg}`);
+    };
+    
     return playerSandbox;
   };
   

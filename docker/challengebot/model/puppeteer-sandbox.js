@@ -11,7 +11,9 @@ class PuppeteerSandbox {
   script = '';
   
   // A saved-state object that allows this sandbox to store data
-  // between instantiations.
+  // between instantiations. Not all sandbox child types make use
+  // of long-term memory, but it's integral enough to the function of
+  // the sandbox that it's worth adding support for it in the base class.
   myLongTermMemory = '';
   
   // An error that was encountered during the run. Cleared when

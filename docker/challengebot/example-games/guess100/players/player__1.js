@@ -10,9 +10,9 @@ guess = ChallengeBot.myLongTermMemory.startingNumber;
 
 let longstring = 'foo';
 while (true) {
-  console.log(`I'm going to guess ${guess}`);
+  ChallengeBot.taunt(`I'm going to guess ${guess}`);
   const isResultGood = await ChallengeBot.action(guess);
-  console.log(`I guessed ${guess}. Result: ${isResultGood}`);
+  ChallengeBot.taunt(`I guessed ${guess}. Result: ${isResultGood}`);
   
   if (isResultGood) {
     ChallengeBot.taunt('I got it!');
@@ -23,7 +23,7 @@ while (true) {
   }
   
   //const sleepdur = guess * 250;
-  //console.log(`I think hard now. ${sleepdur} ms`);
+  //ChallengeBot.taunt(`I think hard now. ${sleepdur} ms`);
   //await ChallengeBot.sleep(sleepdur);
   
   guess++;
@@ -35,9 +35,10 @@ while (true) {
 
 
 await ChallengeBot.gameOver();
+const prizes = await ChallengeBot.prizes();
 
-console.log('Look at what I won!');
-console.log(await ChallengeBot.prizes());
+ChallengeBot.taunt('Look at what I won!');
+ChallengeBot.taunt(JSON.stringify(prizes));
 
-console.log('And now I spin.');
+ChallengeBot.taunt('And now I spin.');
 await ChallengeBot.sleep(10000);

@@ -63,12 +63,14 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // the other.
   sensorReadings = null;
   
-  // A short message set by the player via taunt(), and readable by
-  // the arena via getPlayerTaunt(). Its only purpose is for funny
-  // or insightfun UI updates.
-  // TODO: Replace this with a callback that notifies the spectator directly.
-  tauntMsg = null;
-  
+  // Method set by the caller. Receives a short message set by the 
+  // player via taunt(), and readable by the arena via getPlayerTaunt(). 
+  // Its only purpose is for funny or insightfun UI updates, but it can
+  // be used for debugging messages too during development.
+  onTaunt = async () => {
+    throw new Error('Framework needs to assign PlayerPuppeteerSandbox::onTaunt.');
+  };
+    
   // List of prizes awarded to the player at the end of the game.
   prizes = [];
   
@@ -80,10 +82,7 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
     });
     
     await this.injectFunction('taunt', (tauntMsg) => {
-      if (typeof tauntMsg !== 'undefined') {
-        this.tauntMsg = tauntMsg;
-      }
-      return this.tauntMsg;
+      this.onTaunt(tauntMsg);
     });
     
     await this.injectFunction('action', (actionParams) => {
