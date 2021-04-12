@@ -39,7 +39,46 @@ class PuppeteerSandbox {
     this.browser = await puppeteer.launch({
       headless: false
     });
+    
     this.page = await this.browser.newPage();
+
+    // Prevent the browser from accessing the network!
+    // This is critical, unless you want your players cheating and pulling
+    // online resources (via bandwidth that you have to pay for.)
+    // (And obviously, if they had network access, then instead of writing
+    // game bots they'll instead just use this platform for running botnets,
+    // ad networks, and bitcoin miners.)
+    // We use Chrome Dev Tools options to set this Puppeteer instance
+    // to work offline.
+    // https://fdalvi.github.io/blog/2018-02-05-puppeteer-network-throttle/
+    // NOTE: We can't just specify offline: true. We need to supply the 
+    // entire configuration data structure. Other examples seen here:
+    // https://gist.github.com/aslushnikov/8fc02205222e3dcf367cfd3f470ec554
+    // NOTE: Puppeteer now supports emulating network conditions directly,
+    // but it doesn't appear to have a predefined "offline" mode, and it
+    // appears to just call Chrome DevTools anyway.
+    // https://pptr.dev/#?product=Puppeteer&version=v8.0.0&show=api-pageemulatenetworkconditionsnetworkconditions
+    
+    const devtoolsession = await this.page.target().createCDPSession();
+    await devtoolsession.send('Network.emulateNetworkConditions', {
+      downloadThroughput: 0,
+      uploadThroughput: 0,
+      latency: 0,
+      offline: true,
+    });
+    
+    // Chrome DevTools network condition emulation doesn't affect WebSockets 
+    // or RTCPeerConnection, so it's not a perfectly isolated sandbox. 
+    // We still need to take extra measures.
+    // It appears that this is a problem for Chrome DevTools as well.
+    // Override the WebSocket and RTCPeerConnection interfaces
+    // so the player can't form network connections.
+    // These connection types are not yet handled by network throttling.
+    // https://bugs.chromium.org/p/chromium/issues/detail?id=563644
+    await this.page.evaluate(
+        `WebSocket = function() { throw new Error('Use of WebSocket is forbidden. Nice try.'); }`);
+    await this.page.evaluate(
+        `RTCPeerConnection = function() { throw new Error('Use of RTCPeerConnection is forbidden. Nice try.'); }`);
     
     // Inject a global ChallengeBot object that will be used
     // as a namespace for aliases for exposed methods.
