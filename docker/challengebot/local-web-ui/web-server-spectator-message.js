@@ -25,6 +25,12 @@ class WebServerSpectatorMessage {
   // For taunts, this is the number of the player who sent it.
   player = 0;
   
+  // The number of milliseconds of wallclock time since the game
+  // was started, when this message was received. The game's wallclock
+  // time starts when the first message is received, so the first
+  // message always has gametime_ms=0;
+  gametime_ms = 0;
+  
   // The data associated with this message.
   data = {};
 };

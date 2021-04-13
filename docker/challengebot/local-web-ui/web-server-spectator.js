@@ -17,6 +17,9 @@ class WebServerSpectator extends Spectator {
   // A log of every update and taunt received.
   messageHistory = [];
 
+  // The wallclock time when the first message was received.
+  timestampFirstMessage = null;
+
   // A promise that gets resolved when a new message comes in.
   // A new one gets created every time a message arrives and the
   // old one gets resolved.
@@ -37,6 +40,13 @@ class WebServerSpectator extends Spectator {
     msg.message_type = type;
     msg.player = player || 0;
     msg.data = data;
+    
+    if (!this.timestampFirstMessage) {
+      this.timestampFirstMessage = Date.now();
+      msg.gametime_ms = 0;
+    } else {
+      msg.gametime_ms = Date.now() - this.timestampFirstMessage;
+    }
     
     this.messageHistory.push(msg);
     
