@@ -13,9 +13,49 @@ class WebServerSpectator extends Spectator {
 
   // The port that our server will run on.
   port = 3210;
+
+  // A log of every update and taunt received.
+  messageHistory = [];
+
+  // A promise that gets resolved when a new message comes in.
+  // A new one gets created every time a message arrives and the
+  // old one gets resolved.
+  // Resolves with a message object.
+  newMessagePromise = null;
   
+  // The resolve method for the new message promise. Replaced every
+  // time a new message comes in and the old one gets resolved.
+  // Takes a message as an argument.
+  newMessagePromiseResolve = null;
+  
+  // The reject method for the new message promise. Called on shutdown.
+  newMessagePromiseReject = null;
+  
+
+  addMessage(type, data, player) {
+    const msg = new WebServerSpectatorMessage();
+    msg.message_type = type;
+    msg.player = player || 0;
+    msg.data = data;
+    
+    this.messageHistory.push(msg);
+    
+    const numMsgs = this.messageHistory.length;
+    msg.message_num = numMsgs;
+    this.messageHistory.forEach((m) => m.message_count = numMsgs);
+    
+    if (this.newMessagePromiseResolve) {
+      this.newMessagePromiseResolve(msg);
+    }
+    
+    this.newMessagePromise = new Promise((resolve, reject) => {
+      this.newMessagePromiseResolve = resolve;
+      this.newMessagePromiseReject = reject;
+    });
+  }
+
   async init() {
-    this.theServer = http.createServer(this.listener);
+    this.theServer = http.createServer(this.listener.bind(this));
     this.theServer.listen(this.port, () => {
       console.info(`Server running at http://localhost:${this.port}`);
     });
@@ -25,28 +65,53 @@ class WebServerSpectator extends Spectator {
     if (this.theServer) {
       this.theServer.close();
     }
+    
+    if (this.newMessagePromiseReject) {
+      this.newMessagePromiseReject(new Error('HTTP server shutdown.'));
+    }
   }
   
   async receiveUpdate(update) {
-    if (typeof update !== 'string' && typeof update !== 'number') {
-      update = JSON.stringify(update);
-    }
-    console.log(`ARENA update: ${update}`);
+    this.addMessage('ui', update);
   }
   
-  // Receive a taunt from a player.
   async receiveTaunt(playernum, tauntMsg) {
-    if (typeof tauntMsg !== 'string' && typeof tauntMsg !== 'number') {
-      tauntMsg = JSON.stringify(tauntMsg);
-    }
-    console.log(`TAUNT from Player ${playernum}: ${tauntMsg}`);
+    this.addMessage('taunt', tauntMsg, playernum);
   }  
   
   // Listener method for the http server.
   listener(req, res) {
-    console.log(req);
-    res.write('Hello World!');
-    res.end();    
+    // Are we receiving a request for:
+    // - Our container web assets (html/css/js/etc)?
+    // - Our arena web assets (html/css/js/etc)?
+    // 1. The next message?
+    // 2. The last message?
+    // 3. A specific numbered message?
+    // 4. The entire message history?
+    const [url, querystring] = req.url.split('?');
+    
+    console.log(this.messageHistory);
+    console.log(JSON.stringify(this.messageHistory));
+    
+    //res.write(JSON.stringify(this.messageHistory));
+    //res.end();    
+    
+    // We're going to try to implement this as a long poll.
+    res.write(JSON.stringify(this.messageHistory));
+    const awaitNextMessage = () => {
+      if (!this.newMessagePromise) {
+        res.end();
+        return;
+      }
+      this.newMessagePromise.then((msg) => {
+        res.write(JSON.stringify(msg));
+        awaitNextMessage();
+      }).catch((err) => {
+        res.write(JSON.stringify(err));
+        res.end();
+      });
+    };
+    awaitNextMessage();
   }
 };
 
