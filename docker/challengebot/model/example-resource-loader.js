@@ -7,7 +7,7 @@ const ResourceLoader = require('./resource-loader.js');
 
 const fs = require('fs');
 
-const EXAMPLE_GAME_PATH = './example-games/guess100';
+const EXAMPLE_GAME_PATH = './example-games';
 
 
 class ExampleResourceLoader extends ResourceLoader {
@@ -15,23 +15,35 @@ class ExampleResourceLoader extends ResourceLoader {
   currentPlayerNum = 0;
 
   async loadArenaScript() {
+    if (!this.gameId) {
+      throw new Error('Must set gameId before calling loadArenaScript.');
+    }
     const retval = fs.readFileSync(
-        `${EXAMPLE_GAME_PATH}/arena/arena.js`, 
+        `${EXAMPLE_GAME_PATH}/${this.gameId}/arena/arena.js`, 
         {encoding: 'utf-8'});
     return retval;
   }
   
   async loadPlayerScript() {
+    if (!this.gameId) {
+      throw new Error('Must set gameId before calling loadArenaScript.');
+    }
     this.currentPlayerNum++;
     const retval = fs.readFileSync(
-        `${EXAMPLE_GAME_PATH}/players/player__${this.currentPlayerNum}.js`, 
+        `${EXAMPLE_GAME_PATH}/${this.gameId}/players/player__${this.currentPlayerNum}.js`, 
         {encoding: 'utf-8'});
     return retval;
   }
   
   async loadPlayerLongTermMemory() {
+    if (!this.gameId) {
+      throw new Error('Must set gameId before calling loadArenaScript.');
+    }
+    if (!this.currentPlayerNum) {
+      throw new Error('Must load a player with a call to loadPlayerScript before loading player long-term memory.');
+    }
     const retval = fs.readFileSync(
-        `${EXAMPLE_GAME_PATH}/players/ltm__${this.currentPlayerNum}.json`,
+        `${EXAMPLE_GAME_PATH}/${this.gameId}/players/ltm__${this.currentPlayerNum}.json`,
         {encoding: 'utf-8'});
     return retval;
   }

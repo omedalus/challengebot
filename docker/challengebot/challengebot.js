@@ -13,6 +13,7 @@ const main = async () => {
   
   const resourceLoader = new ExampleResourceLoader();
   await resourceLoader.init();
+  await resourceLoader.setGame('guess100');
   
   const playerSandboxes = [];
   
@@ -132,9 +133,14 @@ const main = async () => {
 
 
 (async () => {
-  await main();
-  // Ensure that we exit, even if there are still timeouts lingering.
-  process.exit();  
+  try {
+    await main();
+    // Ensure that we exit, even if there are still timeouts lingering.
+    process.exit();  
+  } catch (err) {
+    console.error(err);
+    process.exit(1);  
+  }
 })();
 
 
