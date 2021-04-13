@@ -1,4 +1,3 @@
-const fs = require('fs');
 
 const ArenaPuppeteerSandbox = require('./model/arena-puppeteer-sandbox.js');
 const PlayerPuppeteerSandbox = require('./model/player-puppeteer-sandbox.js');
@@ -6,11 +5,14 @@ const PlayerAccessor = require('./model/player-accessor.js');
 
 const WebServerSpectator = require('./local-web-ui/web-server-spectator.js');
 
-const EXAMPLE_GAME_PATH = './example-games/guess100';
+const ExampleResourceLoader = require('./model/example-resource-loader.js');
 
 const main = async () => {
   const spectator = new WebServerSpectator();
   await spectator.init();
+  
+  const resourceLoader = new ExampleResourceLoader();
+  await resourceLoader.init();
   
   const playerSandboxes = [];
   
@@ -30,17 +32,14 @@ const main = async () => {
 
     // Load the player's script.
     // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
-    playerSandbox.script = fs.readFileSync(
-        `${EXAMPLE_GAME_PATH}/players/player__${playerSandbox.playernum}.js`, 
-        {encoding: 'utf-8'});
+    playerSandbox.script = await resourceLoader.loadPlayerScript();
         
     // Load the player's long-term memory.
     // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
     try {
-      ltmJSON = fs.readFileSync(
-          `${EXAMPLE_GAME_PATH}/players/ltm__${playerSandbox.playernum}.json`,
-          {encoding: 'utf-8'});
-      playerSandbox.myLongTermMemory = JSON.parse(ltmJSON);
+      ltmJSON = await resourceLoader.loadPlayerLongTermMemory();
+      ltmObj = JSON.parse(ltmJSON);
+      playerSandbox.myLongTermMemory = ltmObj;
     } catch(err) {
       // It's not really a big deal if we can't load the player's long-term memory,
       // but it does probably mean that there's something wrong with our framework.
@@ -60,11 +59,9 @@ const main = async () => {
   
   arenaSandbox.playerAccessor = playerAccessor;
   
-    // Load the arena script.
-    // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
-  arenaSandbox.script = fs.readFileSync(
-      `${EXAMPLE_GAME_PATH}/arena/arena.js`, 
-      {encoding: 'utf-8'});
+  // Load the arena script.
+  // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
+  arenaSandbox.script = await resourceLoader.loadArenaScript();
   
   arenaSandbox.updateSpectator = async (spectatorParams) => {
     await spectator.receiveUpdate(spectatorParams);
