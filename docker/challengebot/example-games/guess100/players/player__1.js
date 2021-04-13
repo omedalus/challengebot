@@ -22,9 +22,9 @@ while (true) {
     break;
   }
   
-  //const sleepdur = guess * 250;
-  //ChallengeBot.taunt(`I think hard now. ${sleepdur} ms`);
-  //await ChallengeBot.sleep(sleepdur);
+  const sleepdur = 2000;
+  ChallengeBot.taunt(`I think hard now. ${sleepdur} ms`);
+  await ChallengeBot.sleep(sleepdur);
   
   guess++;
   guess %= 100;

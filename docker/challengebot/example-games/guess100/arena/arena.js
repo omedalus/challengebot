@@ -21,7 +21,7 @@ while (true) {
     break;
   }
   
-  const playerGuess = await ChallengeBot.getPlayerAction(playerNum);
+  const playerGuess = await ChallengeBot.requirePlayerAction(playerNum);
   ChallengeBot.updateSpectator(`Player has guessed ${JSON.stringify(playerGuess)}`);
   
   const isGuessCorrect = (playerGuess === goal);
