@@ -11,18 +11,18 @@ await ChallengeBot.startGame();
 
 const goal = Math.ceil(Math.random() * 100);
 
-ChallengeBot.updateSpectator(`I'm thinking of a number. It's ${goal}.`);
+ChallengeBot.updateSpectator({goal});
 
 let numGuessesPermitted = 101;
 while (true) {
   numGuessesPermitted--;
-  ChallengeBot.updateSpectator(`${numGuessesPermitted} guesses remaining.`);
+  ChallengeBot.updateSpectator({goal, numGuessesPermitted});
   if (numGuessesPermitted <= 0) {
     break;
   }
   
-  const playerGuess = await ChallengeBot.requirePlayerAction(playerNum);
-  ChallengeBot.updateSpectator(`Player has guessed ${JSON.stringify(playerGuess)}`);
+  const playerGuess = await ChallengeBot.requirePlayerAction(playerNum, 10000);
+  ChallengeBot.updateSpectator({goal, numGuessesPermitted, playerGuess});
   
   const isGuessCorrect = (playerGuess === goal);
   

@@ -1,22 +1,12 @@
-/**
- * This spectator runs a web server that serves a sort of "degenerate"
- * web page whose sole purpose is to display the game UI. It's best
- * suited for running local instances of game dockers, and allowing
- * the programmer to view the action from a browser running natively
- * on the host OS. 
- * 
- * (It's preferable to marshal the UI to a real browser instead of a 
- * programmatically launched Chromium instance from puppeteer, which 
- * cannot be relied on to work properly in headed mode because of 
- * half a dozen reasons.)
- */
- 
+
 // This class relies on the standard NodeJS http server.
 // https://www.w3schools.com/nodejs/obj_http_server.asp
-// API documentation:
-// https://nodejs.org/api/http.html
 const http = require('http');
 const fs = require('fs');
+
+// The WebSocket parts below come from
+// https://www.npmjs.com/package/websocket
+const WebSocketServer = require('websocket').server;
 
 const Spectator = require('../model/spectator.js');
 const WebServerSpectatorMessage = require('./web-server-spectator-message.js');
@@ -26,6 +16,8 @@ class WebServerSpectator extends Spectator {
   // The web server object that we wrap.
   theServer = null;
   
+  theSocketServer = null;
+
   // The port that our server will run on.
   port = 3210;
 
@@ -40,14 +32,15 @@ class WebServerSpectator extends Spectator {
   // old one gets resolved.
   // Resolves with a message object.
   newMessagePromise = null;
-
+  
   // The resolve method for the new message promise. Replaced every
   // time a new message comes in and the old one gets resolved.
   // Takes a message as an argument.
   newMessagePromiseResolve = null;
-
+  
   // The reject method for the new message promise. Called on shutdown.
   newMessagePromiseReject = null;
+  
 
   addMessage(type, data, player) {
     const msg = new WebServerSpectatorMessage();
@@ -83,6 +76,12 @@ class WebServerSpectator extends Spectator {
     this.theServer.listen(this.port, () => {
       console.info(`Server running at http://localhost:${this.port}`);
     });
+    
+    this.theSocketServer = new WebSocketServer({
+      httpServer: this.theServer,
+      autoAcceptConnections: false
+    });
+    this.theSocketServer.on('request', this.websocketListener.bind(this));
   }
   
   async shutdown() {    
@@ -90,7 +89,12 @@ class WebServerSpectator extends Spectator {
       await this.theServer.close();
       this.theServer = null;
     }
-        
+    
+    if (this.theSocketServer) {
+      // The socket server was closed when the HTTP server was closed.
+      this.theSocketServer = null;
+    }    
+    
     if (this.newMessagePromiseReject) {
       this.newMessagePromiseReject(new Error('HTTP server shutdown.'));
       this.newMessagePromiseReject = null;
@@ -121,76 +125,69 @@ class WebServerSpectator extends Spectator {
     // - The entire message history?
     // - The history since some message?
     const [url, querystring] = req.url.split('?');
-        
+    
     // URLS of the form .../spectator/xxxx summon spectator container assets.
     let m = url.match(/\/spectator\/(?<spectatorResource>.+)$/);
     if (m && m.groups && m.groups.spectatorResource) {
       const filePath = `./local-web-ui/spectator/${m.groups.spectatorResource}`;
       const fileContent = fs.readFileSync(filePath, {encoding: 'utf-8'});
-      // NOTE: We don't know content type, but hopefully the browser will be
-      // smart enough to figure it out.
       res.write(fileContent);
       res.end();
       return;
     }
     
-    // URLS of the form .../messages/since/###[/] summon a JSON
-    // of all messages since the given number (not including
-    // that number). If ### happens to
-    // exactly equal the number of the last message sent, then
-    // wait to return the next message.
-    // In all cases, the response, when successful, is a JSON 
-    // of an array of message objects.
-    m = url.match(/\/messages\/since\/(?<messagenum>\d+)\/?$/);
-    if (m && m.groups && m.groups.messagenum) {
-      const messageNumSince = parseInt(m.groups.messagenum, 10) || 0;
-      
-      // We compare the message number to the message history length.
-      // We can do this because the message numbers are 1-indexed.
-      if (messageNumSince === this.messageHistory.length) {
-        if (!this.newMessagePromise) {
-          // There's no new message promise, so there's nothing to wait for.
-          // This should be impossible, but that's not the client's problem.
-          // Just tell the client there are no messages.
-          res.statusCode = 404;
-          res.write(JSON.stringify([]));
-          res.end();
-          return;
-        }
-        // Send the "current" (i.e. next) message to the client.
-        // That means we need to wait for the message to come in.
-        // Wait for the promise to resolve before sending the response.
-        // Remember, it resolves with the newly added message.
-        this.newMessagePromise.then((msg) => {
-          // Return a JSON array of length 1, containing the message object.
-          res.write(JSON.stringify([msg]));
-          res.end();
-        });
-        return;
-
-      } else if (messageNumSince > this.messageHistory) {
-        // The "since" message hasn't even been created yet, so we
-        // tell the client to hold their horses.
-        res.statusCode = 404;
-        res.write(JSON.stringify([]));
+        //res.write(JSON.stringify(this.messageHistory));
+    //res.end();    
+    
+    // We're going to try to implement this as a long poll.
+    res.write(JSON.stringify(this.messageHistory));
+    const awaitNextMessage = () => {
+      if (!this.newMessagePromise) {
         res.end();
         return;
-      } 
-
-      // Return the message history since the given messaeg number.
-      const respMsgs = this.messageHistory.slice(messageNumSince);
-      res.write(JSON.stringify(respMsgs));
-      res.end();
+      }
+      this.newMessagePromise.then((msg) => {
+        res.write(JSON.stringify(msg));
+        awaitNextMessage();
+      }).catch((err) => {
+        res.write(JSON.stringify(err));
+        res.end();
+      });
+    };
+    awaitNextMessage();
+  }
+  
+  
+  websocketListener(request) {
+    // TODO: Make sure that request.origin is a permitted origin.
+    // If it doesn't, call request.reject().
+    let connection = null;
+    try {
+      connection = request.accept('challengebot-web-spectator', request.origin);
+    } catch (err) {
+      console.warn(err);
       return;
     }
+
+    // Upon connection, the first thing we do is send the entire message history
+    // built up to date.
+    connection.sendUTF(JSON.stringify(this.messageHistory));
     
-    // URLs of the form .../arena/XXXXX summon arena assets.
-    // TODO: Do this.
-    
-    // All other URLs return 404.
-    res.statusCode = 404;
-    res.write(`No such URL: ${url}`);
-    res.end();
+    /*
+    connection.on('message', function(message) {
+      if (message.type === 'utf8') {
+        console.log('Received Message: ' + message.utf8Data);
+        connection.sendUTF(message.utf8Data);
+      }
+      else if (message.type === 'binary') {
+        console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
+        connection.sendBytes(message.binaryData);
+      }
+    });
+    connection.on('close', function(reasonCode, description) {
+      console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+    });
+    */
   }
 };
 

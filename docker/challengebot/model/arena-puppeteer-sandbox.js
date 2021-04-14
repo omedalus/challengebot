@@ -193,7 +193,10 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
   // there is one. If not, then blocks until either the player sets an action
   // or the timeout expires.
   requirePlayerAction(player, maxWaitMs) {
-    maxWaitMs = Math.ceil(Math.max(1, maxWaitMs));      
+    if (typeof maxWaitMs !== 'number' || maxWaitMs < 1) {
+      throw new TypeError('Player action timeout needs to be specified as a number greater than 1.');
+    }      
+    maxWaitMs = Math.ceil(Math.max(1, maxWaitMs || 1));      
     
     player.actionRequiredResolve = null;
     if (player.actionParams) {
@@ -201,7 +204,7 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
     }
     const p = new Promise((resolve, reject) => {
       player.actionRequiredResolve = resolve;
-      this.page.waitForTimeout(Math.ceil(Math.abs(maxWaitMs)) || 1).finally(() => {
+      this.page.waitForTimeout(maxWaitMs).finally(() => {
         // If the timeout has passed and resolve has no been called, then 
         // the player has never called their action() method in the allotted time,
         // and they must be rejected. Note that if resolve HAS been called, then

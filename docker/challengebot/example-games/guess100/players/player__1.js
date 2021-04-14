@@ -22,7 +22,7 @@ while (true) {
     break;
   }
   
-  const sleepdur = 2000;
+  const sleepdur = 2500;
   ChallengeBot.taunt(`I think hard now. ${sleepdur} ms`);
   await ChallengeBot.sleep(sleepdur);
   
@@ -72,4 +72,4 @@ try {
 
 
 ChallengeBot.taunt('And now I spin.');
-await ChallengeBot.sleep(30000);
+await ChallengeBot.sleep(5000);

@@ -3,6 +3,12 @@
  */
 
 class Spectator {
+  // A mapping from resource names to values.
+  // These are visualization resources that may help with displays in
+  // various context-specific formats. For example, for a web spectator,
+  // the resources can be an arena's HTML, JS, and CSS files.
+  resource = {};
+  
   // In case the spectator needs any asynchronous initialization.
   async init() {
     throw new Error('Spectator needs to override init.');
@@ -22,9 +28,6 @@ class Spectator {
   async shutdown() {
     throw new Error('Spectator needs to override shutdown.');
   }
-  
-  // TODO: Provide assignResource methods so that the spectator
-  // can be told things like "the arena's HTML is `...`".
 }
 
 module.exports = Spectator;

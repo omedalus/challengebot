@@ -128,6 +128,7 @@ const main = async () => {
     console.log('\n\n');  
   }
   
+  console.log('Awaiting spectator shutdown.');
   await spectator.shutdown();
 };
 
