@@ -7,7 +7,12 @@ class Spectator {
   // These are visualization resources that may help with displays in
   // various context-specific formats. For example, for a web spectator,
   // the resources can be an arena's HTML, JS, and CSS files.
-  resource = {};
+  resources = {};
+
+  // A string that helps the resource loader fetch this spectator's assets.
+  getSpectatorResourceType() {
+    throw new Error('Spectator needs to override getSpectatorResourceType.');
+  }
   
   // In case the spectator needs any asynchronous initialization.
   async init() {

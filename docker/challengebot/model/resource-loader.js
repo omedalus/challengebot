@@ -22,6 +22,15 @@ class ResourceLoader {
     throw new Error('ResourceLoader subclass needs to override loadArenaScript.');
   }
   
+  // Load UI resources for the spectator.
+  // Should only be called once per bout.
+  // Returns a map of objects. The map keys and object structure are dependent
+  // on the spectator type.
+  async loadSpectatorResources(spectatorType) {
+    throw new Error('ResourceLoader subclass needs to override loadSpectatorResources.');
+  }
+  
+  
   // Load the script of the next player.
   // Can be called as many times as the arena needs players.
   async loadPlayerScript() {

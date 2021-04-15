@@ -78,6 +78,10 @@ class WebServerSpectator extends Spectator {
     });
   }
 
+  getSpectatorResourceType() {
+    return 'web-desktop';
+  }
+
   async init() {
     this.theServer = http.createServer(this.listener.bind(this));
     this.theServer.listen(this.port, () => {
@@ -185,7 +189,26 @@ class WebServerSpectator extends Spectator {
     }
     
     // URLs of the form .../arena/XXXXX summon arena assets.
-    // TODO: Do this.
+    m = url.match(/\/arena\/(?<arenaResource>.+)$/);
+    if (m && m.groups && m.groups.arenaResource) {
+      const resourceKey = m.groups.arenaResource;
+      // NOTE: In theory, we should check for './' and replace it with ''
+      // (but we have to be careful in this task because we don't want to
+      // turn 'iendwithdot./icontinue' into 'iendwithdoticontinue').
+      // In practice, it seems like the browser simplifies this for us
+      // when it sends the request, so we are relieved of this responsibility
+      // for now.
+      
+      const resource = this.resources[resourceKey];
+      if (!resource) {
+        res.statusCode = 404;
+        res.write(`No such resource: ${resourceKey}`);
+        res.end();
+      }
+      res.write(resource.data);
+      res.end();
+      return;
+    }
     
     // All other URLs return 404.
     res.statusCode = 404;

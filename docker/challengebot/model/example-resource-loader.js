@@ -47,6 +47,54 @@ class ExampleResourceLoader extends ResourceLoader {
         {encoding: 'utf-8'});
     return retval;
   }
+  
+  async loadSpectatorResources(spectatorType) {
+    if (spectatorType !== 'web-desktop') {
+      throw new Error(`Don\'t know how to load resources of type: ${spectatorType}`);
+    }
+    const dir = `${EXAMPLE_GAME_PATH}/${this.gameId}/spectator/`;
+
+    let filedata = walkFiles(dir);
+    return filedata;
+  }
+  
+}
+
+// Yoinked and adapted from:
+// https://stackoverflow.com/questions/5827612/node-js-fs-readdir-recursive-directory-search
+const walkFiles = (basedir, dir) => {
+  if (typeof dir === 'undefined') {
+    dir = '';
+  }
+  
+  let results = {};
+  const list = fs.readdirSync(basedir + '/' + dir);
+  list.forEach((file) => {
+    const key = dir ? (dir + '/'  + file) : file;
+    const stat = fs.statSync(basedir + '/' + key);
+    if (stat && stat.isDirectory()) { 
+      // Recurse into a subdirectory 
+      results = {
+        ...results,
+        ...walkFiles(basedir, key)
+      };
+    } else { 
+      // Is a file 
+      const isBinary = false;
+      const contentType = '';
+      const data = fs.readFileSync(
+          basedir + '/' + key, 
+          isBinary ? {} : {encoding: 'utf-8'}
+      );
+      
+      results[key] = {
+        key,
+        contentType,
+        data
+      };      
+    }
+  });
+  return results;
 }
 
 module.exports = ExampleResourceLoader;

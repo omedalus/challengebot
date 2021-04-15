@@ -63,6 +63,7 @@ const main = async () => {
   // Load the arena script.
   // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
   arenaSandbox.script = await resourceLoader.loadArenaScript();
+  spectator.resources = await resourceLoader.loadSpectatorResources(spectator.getSpectatorResourceType());
   
   arenaSandbox.updateSpectator = async (spectatorParams) => {
     await spectator.receiveUpdate(spectatorParams);
@@ -120,6 +121,7 @@ const main = async () => {
 
       console.log('  And what did we learn from this?');
       console.log(psbx.myLongTermMemory);
+      // TODO: Write LTM
 
       console.log('  Writing player results to DB...');
       // TODO: Do that.
