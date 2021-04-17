@@ -48,14 +48,20 @@ class ExampleResourceLoader extends ResourceLoader {
     return retval;
   }
   
-  async loadSpectatorResources(spectatorType) {
+  async loadSpectatorResource(resourceKey, spectatorType) {
     if (spectatorType !== 'web-desktop') {
       throw new Error(`Don\'t know how to load resources of type: ${spectatorType}`);
     }
-    const dir = `${EXAMPLE_GAME_PATH}/${this.gameId}/spectator/`;
-
-    let filedata = walkFiles(dir);
-    return filedata;
+    const filePath = `${EXAMPLE_GAME_PATH}/${this.gameId}/spectator/${resourceKey}`;
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+    const fileContent = fs.readFileSync(filePath, {encoding: 'utf-8'});
+    // NOTE: We don't know the content type. If we did, we'd add it as
+    // part of the result object.
+    return {
+      data: fileContent
+    }
   }
   
 }

@@ -125,19 +125,7 @@ class WebServerSpectator extends Spectator {
     // - The entire message history?
     // - The history since some message?
     const [url, querystring] = req.url.split('?');
-        
-    // URLS of the form .../spectator/xxxx summon spectator container assets.
-    let m = url.match(/\/spectator\/(?<spectatorResource>.+)$/);
-    if (m && m.groups && m.groups.spectatorResource) {
-      const filePath = `./local-web-ui/spectator/${m.groups.spectatorResource}`;
-      const fileContent = fs.readFileSync(filePath, {encoding: 'utf-8'});
-      // NOTE: We don't know content type, but hopefully the browser will be
-      // smart enough to figure it out.
-      res.write(fileContent);
-      res.end();
-      return;
-    }
-    
+            
     // URLS of the form .../messages/since/###[/] summon a JSON
     // of all messages since the given number (not including
     // that number). If ### happens to
@@ -145,7 +133,7 @@ class WebServerSpectator extends Spectator {
     // wait to return the next message.
     // In all cases, the response, when successful, is a JSON 
     // of an array of message objects.
-    m = url.match(/\/messages\/since\/(?<messagenum>\d+)\/?$/);
+    let m = url.match(/\/messages\/since\/(?<messagenum>\d+)\/?$/);
     if (m && m.groups && m.groups.messagenum) {
       const messageNumSince = parseInt(m.groups.messagenum, 10) || 0;
       
@@ -191,6 +179,12 @@ class WebServerSpectator extends Spectator {
     // URLs of the form .../arena/XXXXX summon arena assets.
     m = url.match(/\/arena\/(?<arenaResource>.+)$/);
     if (m && m.groups && m.groups.arenaResource) {
+      if (!this.resourceLoader) {
+        res.statusCode = 500;
+        res.write(`Resource loader not set on spectator.`);
+        res.end();
+        return;
+      }
       const resourceKey = m.groups.arenaResource;
       // NOTE: In theory, we should check for './' and replace it with ''
       // (but we have to be careful in this task because we don't want to
@@ -199,20 +193,46 @@ class WebServerSpectator extends Spectator {
       // when it sends the request, so we are relieved of this responsibility
       // for now.
       
-      const resource = this.resources[resourceKey];
-      if (!resource) {
-        res.statusCode = 404;
-        res.write(`No such resource: ${resourceKey}`);
+      // The resource loader is async, so handle it as a promise.
+      this.resourceLoader.loadSpectatorResource(
+          resourceKey, 
+          this.getSpectatorResourceType()
+      ).then((resource) => {
+        if (!resource) {
+          res.statusCode = 404;
+          res.write(`No such resource: ${resourceKey}`);
+          res.end();
+          return;
+        }
+        res.write(resource.data);
         res.end();
-      }
-      res.write(resource.data);
-      res.end();
+      });
       return;
     }
     
-    // All other URLs return 404.
-    res.statusCode = 404;
-    res.write(`No such URL: ${url}`);
+    // All other URLS are assumed to be serving local spectator files.
+    // These are NOT "resources"; they are the containing infrastructure
+    // specific to the WebServerSpectator.
+    // NOTE: We used to require that local spectator files be served with
+    // the prefix /spectator/, but that seems unnecessary. I'll preserve
+    // the regex here though:
+    // let m = url.match(/\/spectator\/(?<spectatorResource>.+)$/);
+    let urlOrIndex = url;
+    if (!urlOrIndex || urlOrIndex.endsWith('/')) {
+      urlOrIndex += 'index.html';
+    }
+    
+    const filePath = `./local-web-ui/spectator/${urlOrIndex}`;
+    if (!fs.existsSync(filePath)) {
+      res.statusCode = 404;
+      res.write(`No such URL: ${url}`);
+      res.end();
+      return;
+    }
+    const fileContent = fs.readFileSync(filePath, {encoding: 'utf-8'});
+    // NOTE: We don't know content type, but hopefully the browser will be
+    // smart enough to figure it out.
+    res.write(fileContent);
     res.end();
   }
 };

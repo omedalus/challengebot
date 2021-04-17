@@ -3,13 +3,15 @@
  */
 
 class Spectator {
-  // A mapping from resource names to values.
-  // These are visualization resources that may help with displays in
-  // various context-specific formats. For example, for a web spectator,
-  // the resources can be an arena's HTML, JS, and CSS files.
-  resources = {};
+  // If specified, lets the spectator fetch files or other assets upon request.
+  resourceLoader = null;
 
   // A string that helps the resource loader fetch this spectator's assets.
+  // For example, if the spectator prints to the console, then the resource
+  // loader should be told 'text' or 'ascii' so it'll fetch resources that
+  // can print to the console. If the spectator shows web pages, then
+  // the resource fetcher should be told to use type 'web' so that it
+  // can fetch HTML files and JPEGs and whatnot.
   getSpectatorResourceType() {
     throw new Error('Spectator needs to override getSpectatorResourceType.');
   }

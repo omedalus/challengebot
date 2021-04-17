@@ -7,13 +7,19 @@ const WebServerSpectator = require('./local-web-ui/web-server-spectator.js');
 
 const ExampleResourceLoader = require('./model/example-resource-loader.js');
 
-const main = async () => {
-  const spectator = new WebServerSpectator();
-  await spectator.init();
-  
+const main = async () => {  
   const resourceLoader = new ExampleResourceLoader();
   await resourceLoader.init();
+  // TODO: The resource loader type and the game ID both need to come
+  // from the commandline.
   await resourceLoader.setGame('guess100');
+
+  // TODO: The spectator can be the local web server, OR it can involve
+  // writing to an AWS endpoint. We need to set up the command line to
+  // decide.
+  const spectator = new WebServerSpectator();
+  spectator.resourceLoader = resourceLoader;
+  await spectator.init();
   
   const playerSandboxes = [];
   
@@ -47,7 +53,6 @@ const main = async () => {
       console.warn(err);
     }    
     
-    // TODO: Connect the player sandbox to the spectator.
     playerSandbox.onTaunt = async (tauntMsg) => {
       await spectator.receiveTaunt(playerSandbox.playernum, tauntMsg);
     };
@@ -63,7 +68,6 @@ const main = async () => {
   // Load the arena script.
   // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
   arenaSandbox.script = await resourceLoader.loadArenaScript();
-  spectator.resources = await resourceLoader.loadSpectatorResources(spectator.getSpectatorResourceType());
   
   arenaSandbox.updateSpectator = async (spectatorParams) => {
     await spectator.receiveUpdate(spectatorParams);

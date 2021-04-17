@@ -21,12 +21,13 @@ class ResourceLoader {
   async loadArenaScript() {
     throw new Error('ResourceLoader subclass needs to override loadArenaScript.');
   }
+
   
   // Load UI resources for the spectator.
-  // Should only be called once per bout.
+  // Called by the spectator.
   // Returns a map of objects. The map keys and object structure are dependent
   // on the spectator type.
-  async loadSpectatorResources(spectatorType) {
+  async loadSpectatorResource(resourceKey, spectatorType) {
     throw new Error('ResourceLoader subclass needs to override loadSpectatorResources.');
   }
   

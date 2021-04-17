@@ -37,7 +37,7 @@ class PuppeteerSandbox {
     this.__initialized = true;
     
     this.browser = await puppeteer.launch({
-      headless: false
+      headless: true
     });
     
     this.page = await this.browser.newPage();
