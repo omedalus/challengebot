@@ -59,7 +59,13 @@ const main = async () => {
     
     return playerSandbox;
   };
-  
+ 
+  playerAccessor.removePlayer = async (player) => {
+    if (player) {
+      await player.shutdown();
+    }
+  };
+ 
   const arenaSandbox = new ArenaPuppeteerSandbox();
   await arenaSandbox.init();
   

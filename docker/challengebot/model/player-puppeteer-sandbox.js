@@ -91,7 +91,7 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
       // session with an enormous object that eats all memory.
       const p = new Promise((resolve, reject) => {
         if (this.actionPromiseResolve !== null) {
-          reject('Previous action is still in progress.');
+          reject({message: 'Previous action is still in progress.'});
           return;
         }
         this.actionParams = actionParams;

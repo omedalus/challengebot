@@ -9,6 +9,7 @@ if (!ChallengeBot.myLongTermMemory || !ChallengeBot.myLongTermMemory.startingNum
 guess = ChallengeBot.myLongTermMemory.startingNumber;
 
 let longstring = 'foo';
+let sleepdur = 1000;
 while (true) {
   ChallengeBot.taunt(`I'm going to guess ${guess}`);
   const isResultGood = await ChallengeBot.action(guess);
@@ -22,9 +23,13 @@ while (true) {
     break;
   }
   
-  const sleepdur = 2500;
+  sleepdur += 100;
   ChallengeBot.taunt(`I think hard now. ${sleepdur} ms`);
   await ChallengeBot.sleep(sleepdur);
+  
+  if (sleepdur > 3000) {
+    throw new Error('I give up');
+  }
   
   guess++;
   guess %= 100;

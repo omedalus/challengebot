@@ -16,6 +16,15 @@ class PlayerAccessor  {
   createPlayer = async () => {
     throw new Error('Caller must set the createPlayer method.');
   };
+
+  // Method set by the caller to provide the arena with a hook to
+  // call when removing players. 
+  // Takes a PlayerPuppeteerSandbox object, presumably one that is
+  // in the player collection.
+  removePlayer = async (player) => {
+    throw new Error('Caller must set the removePlayer method.');
+  };
+
   
   // Method set by the caller to retrieve an iterable collection of players.
   // Players are not assumed to be in any particular order within this

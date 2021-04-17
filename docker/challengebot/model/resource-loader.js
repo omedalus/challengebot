@@ -1,6 +1,8 @@
 
 /**
  * Base class for an object that loads arena scripts, player scripts, and so on.
+ * Also responsible for saving updates to things like player long-term memory,
+ * seeing as it's saved back to the same place it's loaded from.
  */
  
 class ResourceLoader {
@@ -38,12 +40,15 @@ class ResourceLoader {
     throw new Error('ResourceLoader subclass needs to override loadPlayerScript.');
   }
   
-  // Load the long-term memory of the player whose script was most recently loaded.
-  // Can be called as many times as the arena needs players.
-  async loadPlayerLongTermMemory() {
+  // Load the long-term memory of a player.
+  async loadPlayerLongTermMemory(playerId) {
     throw new Error('ResourceLoader subclass needs to override loadPlayerLongTermMemory.');
   }
   
+  // Save a player's long-term memory.
+  async savePlayerLongTermMemory(playerId) {
+    throw new Error('ResourceLoader subclass needs to override savePlayerLongTermMemory.');
+  }
   
   // Perform any asynchronous shutdown logic that might need to take place.
   async shutdown() {

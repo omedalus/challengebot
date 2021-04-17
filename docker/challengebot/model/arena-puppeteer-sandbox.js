@@ -3,6 +3,11 @@ const PuppeteerSandbox = require('./puppeteer-sandbox.js');
 const PlayerAccessor = require('./player-accessor.js');
 const Prize = require('./prize.js');
 
+const ArenaError = require('./error-types/arena-error.js');
+const PlayerUnavailableError = require('./error-types/player-unavailable-error.js');
+const PlayerTimeoutError = require('./error-types/player-timeout-error.js');
+
+
 class ArenaPuppeteerSandbox extends PuppeteerSandbox {
 
   // An object set by the caller that permits the arena sandbox to interact
@@ -11,7 +16,8 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
   
   // Method set by the caller to pass information along to the spectator(s).
   updateSpectator = async (spectatorParams) => {
-    throw new Error('Caller must set the arena\'s updateSpectator method.');
+    const err = new Error('Caller must set the arena\'s updateSpectator method.');
+    throw {...err};
   };
 
   // Can only create one player at a time.
@@ -24,8 +30,12 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
   // if we forgot to set the player accessor.
   ensurePlayerAccessor() {
     if (!this.playerAccessor) {
-      // TODO: Make this an ArenaError type.
-      throw new Error('The arena does not have a player accessor.');
+      // This is not an arena error -- as in, this isn't the fault of the
+      // arena script. This is something wrong with the infrastructure.
+      // We were supposed to wire up a player accessor, and we didn't.
+      // That's not the arena script's fault, that's ours.
+      const err = new Error('The arena does not have a player accessor.');
+      throw {...err};
     }    
   }
 
@@ -38,8 +48,10 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
       this.ensurePlayerAccessor();
       const p = new Promise((resolve, reject) => {
         if (this.isPlayerBeingCreated) {
-          // TODO: Make this an ArenaError.
-          reject('The previous player creation request is still in progress.');
+          // We can't pass typed errors across the puppeteer boundary, unfortunately.
+          // We have to splat them into objects.
+          const err = new ArenaError('The previous player creation request is still in progress.');
+          reject({...err});
           return;
         }
         this.isPlayerBeingCreated = true;
@@ -48,8 +60,9 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
           resolve(player.playernum);
         }).
         catch((err) => {
-          // TODO: Make this an ArenaError.
-          reject(err)
+          // We can't pass typed errors across the puppeteer boundary, unfortunately.
+          // We have to splat them into objects.          
+          reject({...err});
         }).
         finally(() => {
           this.isPlayerBeingCreated = false;
@@ -110,7 +123,7 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
                 allPlayerActions[player.playernum] = {action: player.actionParams};
               }).
               catch((err) => {
-                allPlayerActions[player.playernum] = {error: player.actionParams};
+                allPlayerActions[player.playernum] = {error: err};
               }).
               finally(() => {
                 numPromisesWaiting--;
@@ -150,31 +163,31 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
     
     // Adds a prize to the player's collection of prizes won in this game.
     await this.injectFunction('awardPlayerPrize', (playernum, prizeLabel, prizeArg1, prizeArg2, prizeArg3) => {
-      const prize = new Prize(prizeLabel, prizeArg1, prizeArg2, prizeArg3);      
+      const prize = new Prize(prizeLabel, prizeArg1, prizeArg2, prizeArg3);
       const player = this.getPlayer(playernum);
       player.prizes.push(prize);
     });
-    
+
+    // Removes the player from the game.
+    await this.injectFunction('removePlayer', (playernum) => {
+      const player = this.getPlayer(playernum);
+      this.playerAccessor.removePlayer(player);
+    });
   }
 
   // Get the player with the playernum playernum from the player accessor's
   // collection. This method is guaranteed to return a player object, or throw.
   getPlayer(playernum) {
-    try {
-      this.ensurePlayerAccessor();
-      const player = this.
-          playerAccessor.
-          getPlayerCollection().
-          find((p) => p.playernum === playernum);
-      if (!player) {
-        // TODO: Make this an ArenaError.
-        throw new Error(`No such player with number: ${playernum}`);
-      }
-      return player;    
-    } catch(err) {
-      // TODO: Wrap in an ArenaError.
-      throw err;
+    this.ensurePlayerAccessor();
+    const player = this.
+        playerAccessor.
+        getPlayerCollection().
+        find((p) => p.playernum === playernum);
+    if (!player) {
+      const err = new PlayerUnavailableError(playernum, `No such player with number: ${playernum}`);
+      throw {...err};
     }
+    return player;
   }
 
   // Call the run method on all player sandboxes. This is NOT an asynchronous
@@ -194,7 +207,8 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
   // or the timeout expires.
   requirePlayerAction(player, maxWaitMs) {
     if (typeof maxWaitMs !== 'number' || maxWaitMs < 1) {
-      throw new TypeError('Player action timeout needs to be specified as a number greater than 1.');
+      const err = new TypeError('Player action timeout needs to be specified as a number greater than 1.');
+      throw {...err};
     }      
     maxWaitMs = Math.ceil(Math.max(1, maxWaitMs || 1));      
     
@@ -210,8 +224,14 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
         // and they must be rejected. Note that if resolve HAS been called, then
         // the promise is already fulfilled and therefore this call to reject
         // will do nothing, so it's safe.
-        // TODO: Make this an ArenaError, possibly a PlayerTimeoutError.
-        reject(`Player ${player.playernum} timed out after ${maxWaitMs} ms.`);
+        const err = new PlayerTimeoutError(
+            player.playernum, 
+            maxWaitMs,
+            `Player ${player.playernum} timed out after ${maxWaitMs} ms.`
+        );
+        // We can't pass typed errors across the puppeteer boundary, unfortunately.
+        // We have to splat them into objects.        
+        reject({...err});
       });
     });
     return p;
