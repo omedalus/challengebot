@@ -25,6 +25,10 @@ class PuppeteerSandbox {
   // resolved (void) when the run completes (even if the run itself failed).
   runPromise = null;
   
+  // A method, set by the framework, for handling console messages.
+  // Presumably it can pass them to the spectator.
+  onConsoleMessage = null;
+  
   // Internal tracker that prevents sandbox from being double-initialized.
   __initialized = false;  
   
@@ -41,6 +45,14 @@ class PuppeteerSandbox {
     });
     
     this.page = await this.browser.newPage();
+
+    // Listen for the page's console messages, so that we can display them
+    // to the real console and/or save them for debugging purposes.
+    this.page.on('console', (msg) => {
+      if (this.onConsoleMessage) {
+        this.onConsoleMessage(msg);
+      }
+    });
 
     // Prevent the browser from accessing the network!
     // This is critical, unless you want your players cheating and pulling
@@ -79,7 +91,7 @@ class PuppeteerSandbox {
         `WebSocket = function() { throw new Error('Use of WebSocket is forbidden. Nice try.'); }`);
     await this.page.evaluate(
         `RTCPeerConnection = function() { throw new Error('Use of RTCPeerConnection is forbidden. Nice try.'); }`);
-    
+        
     // Inject a global ChallengeBot object that will be used
     // as a namespace for aliases for exposed methods.
     await this.page.evaluate(`const ChallengeBot = {};`);
@@ -109,8 +121,6 @@ class PuppeteerSandbox {
       return;
     }
     
-    // We would use Promise.any, but apparently that doesn't exist yet.
-    // https://forums.meteor.com/t/promise-any-is-not-a-function/54603
     let didForceShutdown = false;
     const whicheverPromiseResolvesFirst = [
       this.runPromise,

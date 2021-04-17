@@ -30,6 +30,20 @@ class Spectator {
   async receiveTaunt(playernum, tauntMsg) {
     throw new Error('Spectator needs to override receiveTaunt.');
   }
+  
+  // Receive a console message. 
+  // Can be from the arena, in which case the playernum argument is null.
+  async receiveConsoleMessage(playernumOrNullForArena, consoleMsg) {
+    if (playernumOrNullForArena === null) {
+      console.log(`Console log from Arena: ${consoleMsg.text()}`);
+      return;
+    }
+    if (consoleMsg.text() === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED') {
+      // Never mind. It's just the closing message.
+      return;
+    }
+    console.log(`Console log from Player ${playernumOrNullForArena}: ${consoleMsg.text()}`);
+  }  
 
   // In case the spectator needs any special asynchronous shutdown logic.
   async shutdown() {

@@ -56,6 +56,10 @@ const main = async () => {
     playerSandbox.onTaunt = async (tauntMsg) => {
       await spectator.receiveTaunt(playerSandbox.playernum, tauntMsg);
     };
+    playerSandbox.onConsoleMessage = (consoleMsg) => {
+      spectator.receiveConsoleMessage(playerSandbox.playernum, consoleMsg);
+    };
+    
     
     return playerSandbox;
   };
@@ -70,6 +74,10 @@ const main = async () => {
   await arenaSandbox.init();
   
   arenaSandbox.playerAccessor = playerAccessor;
+  
+  arenaSandbox.onConsoleMessage = (consoleMsg) => {
+    spectator.receiveConsoleMessage(null, consoleMsg);
+  };
   
   // Load the arena script.
   // IRL, this will be loaded from a DB, or from a local file specified on the commandline.

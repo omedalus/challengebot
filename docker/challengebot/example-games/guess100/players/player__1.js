@@ -1,5 +1,6 @@
 
 ChallengeBot.taunt(`I'll get you sooner or later!`);
+console.log('And your little dog, too!');
 
 if (!ChallengeBot.myLongTermMemory || !ChallengeBot.myLongTermMemory.startingNumber) {
   ChallengeBot.myLongTermMemory = {
@@ -9,7 +10,7 @@ if (!ChallengeBot.myLongTermMemory || !ChallengeBot.myLongTermMemory.startingNum
 guess = ChallengeBot.myLongTermMemory.startingNumber;
 
 let longstring = 'foo';
-let sleepdur = 1000;
+let sleepdur = 200;
 while (true) {
   ChallengeBot.taunt(`I'm going to guess ${guess}`);
   const isResultGood = await ChallengeBot.action(guess);
@@ -23,8 +24,8 @@ while (true) {
     break;
   }
   
-  sleepdur += 100;
-  ChallengeBot.taunt(`I think hard now. ${sleepdur} ms`);
+  //sleepdur += 100;
+  console.log(`I think hard now. ${sleepdur} ms`);
   await ChallengeBot.sleep(sleepdur);
   
   if (sleepdur > 3000) {

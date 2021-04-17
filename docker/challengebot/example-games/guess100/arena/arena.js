@@ -9,7 +9,7 @@ try {
   // See what happens when we request an action from a player who doesn't exist.
   const noSuchPlayerGuess = await ChallengeBot.getPlayerAction(66);
 } catch (err) {
-  await ChallengeBot.updateSpectator(`Lol just kidding. I know there's no Player ${err.playernum}.`);
+  await console.log(`Lol just kidding. I know there's no Player ${err.playernum}.`);
   await ChallengeBot.sleep(10000);
 }
 
@@ -25,6 +25,7 @@ let numGuessesPermitted = 101;
 while (true) {
   numGuessesPermitted--;
   ChallengeBot.updateSpectator({goal, numGuessesPermitted});
+  console.log(`Only ${numGuessesPermitted} guesses left.`);
   if (numGuessesPermitted <= 0) {
     break;
   }
