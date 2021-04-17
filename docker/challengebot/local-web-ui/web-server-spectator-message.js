@@ -30,8 +30,21 @@ class WebServerSpectatorMessage {
   // time starts when the first message is received, so the first
   // message always has gametime_ms=0;
   gametime_ms = 0;
+
+  // Which data field is populated.
+  // Must be either 'object', 'string', or 'number'.
+  data_type = 'object';
+
+  // Set when data_type is 'object'.
+  data_object = null;
+
+  // Set when data_type is 'string'.
+  data_string = '';
   
-  // The data associated with this message.
+  // Set when data_type is 'number'.
+  data_number = '0';
+
+  // The raw data associated with this message.
   data = {};
 };
 

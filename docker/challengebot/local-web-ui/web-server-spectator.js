@@ -55,6 +55,17 @@ class WebServerSpectator extends Spectator {
     msg.player = player || 0;
     msg.data = data;
     
+    if (typeof data === 'string') {
+      msg.data_type = 'string';
+      msg.data_string = data;
+    } else if (typeof data === 'number') {
+      msg.data_type = 'number';
+      msg.data_number = data;
+    } else {
+      msg.data_type = 'object';
+      msg.data_object = data;
+    }    
+    
     if (!this.timestampFirstMessage) {
       this.timestampFirstMessage = Date.now();
       msg.gametime_ms = 0;
@@ -169,7 +180,7 @@ class WebServerSpectator extends Spectator {
         return;
       } 
 
-      // Return the message history since the given messaeg number.
+      // Return the message history since the given message number.
       const respMsgs = this.messageHistory.slice(messageNumSince);
       res.write(JSON.stringify(respMsgs));
       res.end();
