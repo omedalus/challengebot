@@ -162,9 +162,9 @@ class PuppeteerSandbox {
     try {
       // Inject long-term memory.
       await this.page.evaluate(
-          `ChallengeBot.myLongTermMemory = ${JSON.stringify(this.myLongTermMemory)};`
+          `ChallengeBot.myLongTermMemory = ${JSON.stringify(this.myLongTermMemory || {})};`
       );
-      
+            
       // Run the script!
       await this.page.evaluate(`(async () => { ${script} })()`);
       

@@ -24,28 +24,43 @@ class ExampleResourceLoader extends ResourceLoader {
     return retval;
   }
   
-  async loadPlayerScript() {
+
+  // Gets the ID of the next player slated to join the game.
+  async getNextPlayerId() {
+    this.currentPlayerNum++;
+    return `player__${this.currentPlayerNum}`;
+  }  
+  
+  async loadPlayerScript(playerId) {
     if (!this.gameId) {
       throw new Error('Must set gameId before calling loadArenaScript.');
     }
-    this.currentPlayerNum++;
     const retval = fs.readFileSync(
-        `${EXAMPLE_GAME_PATH}/${this.gameId}/players/player__${this.currentPlayerNum}.js`, 
+        `${EXAMPLE_GAME_PATH}/${this.gameId}/players/${playerId}/script.js`, 
         {encoding: 'utf-8'});
     return retval;
   }
   
-  async loadPlayerLongTermMemory() {
+  async loadPlayerLongTermMemory(playerId) {
     if (!this.gameId) {
       throw new Error('Must set gameId before calling loadArenaScript.');
     }
-    if (!this.currentPlayerNum) {
-      throw new Error('Must load a player with a call to loadPlayerScript before loading player long-term memory.');
-    }
-    const retval = fs.readFileSync(
-        `${EXAMPLE_GAME_PATH}/${this.gameId}/players/ltm__${this.currentPlayerNum}.json`,
+    const retvalJSON = fs.readFileSync(
+        `${EXAMPLE_GAME_PATH}/${this.gameId}/players/${playerId}/ltm.json`,
         {encoding: 'utf-8'});
-    return retval;
+    const retvalObj = JSON.parse(retvalJSON);
+    return retvalObj;
+  }
+  
+  async loadPlayerLoot(playerId) {
+    if (!this.gameId) {
+      throw new Error('Must set gameId before calling loadArenaScript.');
+    }
+    const retvalJSON = fs.readFileSync(
+        `${EXAMPLE_GAME_PATH}/${this.gameId}/players/${playerId}/loot.json`,
+        {encoding: 'utf-8'});
+    const retvalObj = JSON.parse(retvalJSON);
+    return retvalObj;
   }
   
   async loadSpectatorResource(resourceKey, spectatorType) {
@@ -68,6 +83,7 @@ class ExampleResourceLoader extends ResourceLoader {
 
 // Yoinked and adapted from:
 // https://stackoverflow.com/questions/5827612/node-js-fs-readdir-recursive-directory-search
+// NOTE: No longer used.
 const walkFiles = (basedir, dir) => {
   if (typeof dir === 'undefined') {
     dir = '';

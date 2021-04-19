@@ -61,8 +61,8 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
         }).
         catch((err) => {
           // We can't pass typed errors across the puppeteer boundary, unfortunately.
-          // We have to splat them into objects.          
-          reject({...err});
+          // We have to splat them into objects.
+          reject(err.message || {...err});
         }).
         finally(() => {
           this.isPlayerBeingCreated = false;
@@ -143,13 +143,9 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
       return player.sensorReadings;
     });
     
-    // Updates the sensor readings that the player will retrieve with a call to sensors().
-    // This differs from setPlayerSensors in that it modifies whatever sensor readings
-    // object was already present, if any.
-    await this.injectFunction('updatePlayerSensors', (playernum, sensorReadingUpdates) => {
+    // Gets the player's current sensor readings.
+    await this.injectFunction('getPlayerSensors', (playernum) => {
       const player = this.getPlayer(playernum);
-      player.sensorReadings = player.sensorReadings || {};
-      Object.assign(player.sensorReadings, sensorReadingUpdates);
       return player.sensorReadings;
     });
     
@@ -167,6 +163,21 @@ class ArenaPuppeteerSandbox extends PuppeteerSandbox {
       const player = this.getPlayer(playernum);
       player.prizes.push(prize);
     });
+    
+    // Retrieves the player's loot, which is an arbitrary object that persists
+    // is accessible during a game session and persists from one game session
+    // to the next.
+    await this.injectFunction('getPlayerLoot', (playernum) => {
+      const player = this.getPlayer(playernum);
+      return player.loot;
+    });
+
+    // Overwrites the player's loot object.
+    await this.injectFunction('setPlayerLoot', (playernum, lootObj) => {
+      const player = this.getPlayer(playernum);
+      player.loot = lootObj;
+    });
+    
 
     // Removes the player from the game.
     await this.injectFunction('removePlayer', (playernum) => {

@@ -63,6 +63,10 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
   // the other.
   sensorReadings = null;
   
+  // Game items and info that are set by the arena. Can carry over
+  // from one game to the next.
+  myLoot = {};
+  
   // Method set by the caller. Receives a short message set by the 
   // player via taunt(), and readable by the arena via getPlayerTaunt(). 
   // Its only purpose is for funny or insightfun UI updates, but it can
@@ -118,8 +122,17 @@ class PlayerPuppeteerSandbox extends PuppeteerSandbox {
     await this.injectFunction('gameOver', () => {
       return this.gameOverPromise;
     });
+
+    // Lets the player access the loot that the arena has awarded them,
+    // either in this game session or in previous ones.
+    await this.injectFunction('loot', () => {
+      return this.loot;
+    });
     
-    // Lets the player access the prizes that the 
+    // Lets the player access the prizes that the arena has awarded them 
+    // in this game session. Usually done after the arena has informed them
+    // that the game is over. It's up to the arena to give players a chance
+    // to do this.
     await this.injectFunction('prizes', () => {
       return this.prizes;
     });    

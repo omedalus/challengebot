@@ -33,22 +33,40 @@ class ResourceLoader {
     throw new Error('ResourceLoader subclass needs to override loadSpectatorResources.');
   }
   
+
+  // Gets the ID of the next player slated to join the game.
+  async getNextPlayerId() {
+    throw new Error('ResourceLoader subclass needs to override getNextPlayerId.');
+  }
   
-  // Load the script of the next player.
+  // Load the script of the specified player.
   // Can be called as many times as the arena needs players.
-  async loadPlayerScript() {
+  async loadPlayerScript(playerId) {
     throw new Error('ResourceLoader subclass needs to override loadPlayerScript.');
   }
   
-  // Load the long-term memory of a player.
+  // Load the long-term memory of a player before the start of a game.
+  // Returns an LTM object.
   async loadPlayerLongTermMemory(playerId) {
     throw new Error('ResourceLoader subclass needs to override loadPlayerLongTermMemory.');
   }
   
-  // Save a player's long-term memory.
+  // Save a player's long-term memory after the end of a game.
   async savePlayerLongTermMemory(playerId) {
     throw new Error('ResourceLoader subclass needs to override savePlayerLongTermMemory.');
   }
+
+  // Loot is assigned by the arena to a player. It represents in-game resources that
+  // carry over from one gaming session to the next.
+  // TODO: Implement a Loot system.
+  async loadPlayerLoot(playerId) {
+  }
+  
+  // Save a player's loot after the end of a game.
+  // TODO: Implement a Loot system.
+  async savePlayerLoot(playerId) {
+  }
+
   
   // Perform any asynchronous shutdown logic that might need to take place.
   async shutdown() {

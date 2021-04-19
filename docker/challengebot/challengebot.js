@@ -31,36 +31,46 @@ const main = async () => {
   
   playerAccessor.createPlayer = async () => {
     const playerSandbox = new PlayerPuppeteerSandbox();
+
+    spectator.log('Next player requested.');
+    playerSandbox.id = await resourceLoader.getNextPlayerId();
+    
+    spectator.log(`Loading resources for player: ${playerSandbox.id}`);
+    
+    playerSandbox.script = await resourceLoader.loadPlayerScript(playerSandbox.id);
+    spectator.log(` - Script loaded for player: ${playerSandbox.id}`);
+    
+    try {
+      playerSandbox.myLongTermMemory = await resourceLoader.loadPlayerLongTermMemory(playerSandbox.id);
+      spectator.log(` - Long-term memory loaded for player: ${playerSandbox.id}`);
+    } catch (err) {
+      playerSandbox.myLongTermMemory = {};
+      spectator.log(` - ERROR while loading long-term memory for player: ${playerSandbox.id}`);
+      spectator.log(err);
+    }
+
+    try {
+      playerSandbox.myLoot = await resourceLoader.loadPlayerLoot(playerSandbox.id);
+      spectator.log(` - Loot loaded for player: ${playerSandbox.id}`);
+    } catch (err) {
+      playerSandbox.myLoot = {};
+      spectator.log(` - ERROR while loading loot for player: ${playerSandbox.id}`);
+      spectator.log(err);
+    }
+    
     playerSandboxes.push(playerSandbox);
     playerSandbox.playernum = playerSandboxes.length;
-    console.log(`Launching player ${playerSandbox.playernum}!`);
-    
-    await playerSandbox.init();
 
-    // Load the player's script.
-    // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
-    playerSandbox.script = await resourceLoader.loadPlayerScript();
-        
-    // Load the player's long-term memory.
-    // IRL, this will be loaded from a DB, or from a local file specified on the commandline.
-    try {
-      ltmJSON = await resourceLoader.loadPlayerLongTermMemory();
-      ltmObj = JSON.parse(ltmJSON);
-      playerSandbox.myLongTermMemory = ltmObj;
-    } catch(err) {
-      // It's not really a big deal if we can't load the player's long-term memory,
-      // but it does probably mean that there's something wrong with our framework.
-      console.warn(err);
-    }    
-    
     playerSandbox.onTaunt = async (tauntMsg) => {
       await spectator.receiveTaunt(playerSandbox.playernum, tauntMsg);
     };
     playerSandbox.onConsoleMessage = (consoleMsg) => {
       spectator.receiveConsoleMessage(playerSandbox.playernum, consoleMsg);
     };
-    
-    
+
+    spectator.log(`Launching player ${playerSandbox.playernum}!`);
+    await playerSandbox.init();
+
     return playerSandbox;
   };
  
@@ -76,7 +86,7 @@ const main = async () => {
   arenaSandbox.playerAccessor = playerAccessor;
   
   arenaSandbox.onConsoleMessage = (consoleMsg) => {
-    spectator.receiveConsoleMessage(null, consoleMsg);
+    spectator.receiveConsoleMessage('arena', consoleMsg);
   };
   
   // Load the arena script.
@@ -90,13 +100,13 @@ const main = async () => {
   // --------------------
   // RUN THE GAME!!!
   //
-  console.log('Launching the arena!');
+  spectator.log('Launching the arena!');
   await arenaSandbox.run();
 
   // --------------------
   // Handle endgame
   
-  console.log('Arena has completed. Waiting for players to complete.');
+  spectator.log('Arena has completed. Waiting for players to complete.');
   const playerShutdownPromises = [];
   for (let psbx of playerSandboxes) {
     // Notify them that the game is over, and give them each 60 seconds
@@ -108,12 +118,14 @@ const main = async () => {
     const playerShutdownPromise = psbx.
         ensureTimedShutdown(60 * 1000).
         then(() => {
-          console.log(`  [X] Player ${psbx.playernum}: ${psbx.id}`);
+          spectator.log(`  [X] Player ${psbx.playernum}: ${psbx.id}`);
         });
     playerShutdownPromises.push(playerShutdownPromise);
   }
   await Promise.allSettled(playerShutdownPromises);
   
+  
+  // TODO: Move the after-action handling into the ResourceLoader.
   if (arenaSandbox.error) {
     console.log('Arena encountered an error. None of the results count.');
     console.error(arenaSandbox.error);
@@ -148,7 +160,10 @@ const main = async () => {
     console.log('\n\n');  
   }
   
-  console.log('Awaiting spectator shutdown.');
+  spectator.log('Awaiting resource loader shutdown.');
+  await resourceLoader.shutdown();
+
+  spectator.log('Awaiting spectator shutdown.');
   await spectator.shutdown();
 };
 

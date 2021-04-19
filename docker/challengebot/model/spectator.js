@@ -31,23 +31,42 @@ class Spectator {
     throw new Error('Spectator needs to override receiveTaunt.');
   }
   
-  // Receive a console message. 
-  // Can be from the arena, in which case the playernum argument is null.
-  async receiveConsoleMessage(playernumOrNullForArena, consoleMsg) {
-    if (playernumOrNullForArena === null) {
-      console.log(`Console log from Arena: ${consoleMsg.text()}`);
-      return;
-    }
-    if (consoleMsg.text() === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED') {
+  // Receive a console message.
+  // src is either a number or string. If it's a number, it represents a player.
+  // If it's a string, then it must be either 'arena' or 'framework'.
+  // TODO: Find a way to pass this info to a unified logger.
+  async receiveConsoleMessage(src, consoleMsg) {
+    const txt = consoleMsg.text ? consoleMsg.text() : consoleMsg;
+    if (txt === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED') {
       // Never mind. It's just the closing message.
       return;
     }
-    console.log(`Console log from Player ${playernumOrNullForArena}: ${consoleMsg.text()}`);
+    
+    if (src === 'arena') {
+      console.log(`Console log from Arena: ${txt}`);
+      return;
+    }
+
+    if (src === 'framework') {
+      console.log(`Console log from Framework: ${txt}`);
+      return;
+    }
+    
+    if (typeof src === 'number') {
+      console.log(`Console log from Player ${src}: ${txt}`);
+      return;
+    }
+    
+    throw new TypeError(`Unrecognized console message source: ${src}`);
   }  
 
   // In case the spectator needs any special asynchronous shutdown logic.
   async shutdown() {
     throw new Error('Spectator needs to override shutdown.');
+  }
+  
+  async log(msg) {
+    return await this.receiveConsoleMessage('framework', msg);
   }
 }
 
